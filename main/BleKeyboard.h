@@ -11,20 +11,20 @@
 #include "NimBLECharacteristic.h"
 #include "NimBLEHIDDevice.h"
 
-#define BLEDevice                  NimBLEDevice
-#define BLEServerCallbacks         NimBLEServerCallbacks
+#define BLEDevice NimBLEDevice
+#define BLEServerCallbacks NimBLEServerCallbacks
 #define BLECharacteristicCallbacks NimBLECharacteristicCallbacks
-#define BLEHIDDevice               NimBLEHIDDevice
-#define BLECharacteristic          NimBLECharacteristic
-#define BLEAdvertising             NimBLEAdvertising
-#define BLEServer                  NimBLEServer
+#define BLEHIDDevice NimBLEHIDDevice
+#define BLECharacteristic NimBLECharacteristic
+#define BLEAdvertising NimBLEAdvertising
+#define BLEServer NimBLEServer
 
 #else
 
 #include "BLEHIDDevice.h"
 #include "BLECharacteristic.h"
 
-#endif // USE_NIMBLE
+#endif  // USE_NIMBLE
 
 #include "Print.h"
 
@@ -103,34 +103,34 @@ const uint8_t KEY_NUM_PERIOD = 0xEB;
 typedef uint8_t MediaKeyReport[2];
 
 // multimedia keys
-const uint8_t MMKEY_KB_VOL_UP =  0x80; // do not use
-const uint8_t MMKEY_KB_VOL_DOWN =  0x81; // do not use
+const uint8_t MMKEY_KB_VOL_UP = 0x80;    // do not use
+const uint8_t MMKEY_KB_VOL_DOWN = 0x81;  // do not use
 const uint8_t MMKEY_VOL_UP = 0xE9;
 const uint8_t MMKEY_VOL_DOWN = 0xEA;
-const uint8_t MMKEY_SCAN_NEXT_TRACK =0xB5;
+const uint8_t MMKEY_SCAN_NEXT_TRACK = 0xB5;
 const uint8_t MMKEY_SCAN_PREV_TRACK = 0xB6;
-const uint8_t MMKEY_STOP=0xB7;
-const uint8_t MMKEY_PLAYPAUSE= 0xCD;
-const uint8_t MMKEY_MUTE=0xE2;
-const uint8_t MMKEY_BASSBOOST= 0xE5;
-const uint8_t MMKEY_LOUDNESS=  0xE7;
-const uint8_t MMKEY_KB_EXECUTE=0x74;
-const uint8_t MMKEY_KB_HELP= 0x75;
-const uint8_t MMKEY_KB_MENU= 0x76;
-const uint8_t MMKEY_KB_SELECT= 0x77;
-const uint8_t MMKEY_KB_STOP= 0x78;
-const uint8_t MMKEY_KB_AGAIN=  0x79;
-const uint8_t MMKEY_KB_UNDO= 0x7A;
-const uint8_t MMKEY_KB_CUT=  0x7B;
-const uint8_t MMKEY_KB_COPY= 0x7C;
-const uint8_t MMKEY_KB_PASTE=  0x7D;
+const uint8_t MMKEY_STOP = 0xB7;
+const uint8_t MMKEY_PLAYPAUSE = 0xCD;
+const uint8_t MMKEY_MUTE = 0xE2;
+const uint8_t MMKEY_BASSBOOST = 0xE5;
+const uint8_t MMKEY_LOUDNESS = 0xE7;
+const uint8_t MMKEY_KB_EXECUTE = 0x74;
+const uint8_t MMKEY_KB_HELP = 0x75;
+const uint8_t MMKEY_KB_MENU = 0x76;
+const uint8_t MMKEY_KB_SELECT = 0x77;
+const uint8_t MMKEY_KB_STOP = 0x78;
+const uint8_t MMKEY_KB_AGAIN = 0x79;
+const uint8_t MMKEY_KB_UNDO = 0x7A;
+const uint8_t MMKEY_KB_CUT = 0x7B;
+const uint8_t MMKEY_KB_COPY = 0x7C;
+const uint8_t MMKEY_KB_PASTE = 0x7D;
 const uint8_t MMKEY_KB_FIND = 0x7E;
-const uint8_t MMKEY_KB_MUTE= 0x7F; // do not use
+const uint8_t MMKEY_KB_MUTE = 0x7F;  // do not use
 
 // system control keys
-const uint8_t SYSCTRLKEY_POWER=0x01;
-const uint8_t SYSCTRLKEY_SLEEP=0x02;
-const uint8_t SYSCTRLKEY_WAKE= 0x03;
+const uint8_t SYSCTRLKEY_POWER = 0x01;
+const uint8_t SYSCTRLKEY_SLEEP = 0x02;
+const uint8_t SYSCTRLKEY_WAKE = 0x03;
 
 const uint8_t DIAL_R = 0xC8;
 const uint8_t DIAL_L = 0x38;
@@ -146,30 +146,29 @@ typedef struct
   uint8_t keys[6];
 } KeyReport;
 
-class BleKeyboard : public Print, public BLEServerCallbacks, public BLECharacteristicCallbacks
-{
+class BleKeyboard : public Print, public BLEServerCallbacks, public BLECharacteristicCallbacks {
 private:
   BLEHIDDevice* hid;
   BLECharacteristic* inputKeyboard;
   BLECharacteristic* outputKeyboard;
   BLECharacteristic* inputMediaKeys;
   BLECharacteristic* inputDialKeys;
-  BLEAdvertising*    advertising;
-  KeyReport          _keyReport;
-  MediaKeyReport     _mediaKeyReport;
-  std::string        deviceName;
-  std::string        deviceManufacturer;
-  uint8_t            batteryLevel;
-  bool               connected = false;
-  uint32_t           _delay_ms = 7;
+  BLEAdvertising* advertising;
+  KeyReport _keyReport;
+  MediaKeyReport _mediaKeyReport;
+  std::string deviceName;
+  std::string deviceManufacturer;
+  uint8_t batteryLevel;
+  bool connected = false;
+  uint32_t _delay_ms = 7;
   void delay_ms(uint64_t ms);
 
-  uint16_t vid       = 0x05ac;
-  uint16_t pid       = 0x820a;
-  uint16_t version   = 0x0210;
+  uint16_t vid = 0x05ac;
+  uint16_t pid = 0x820a;
+  uint16_t version = 0x0210;
 
 public:
-  BleKeyboard(std::string deviceName = "ESP32 Keyboard", std::string deviceManufacturer = "Espressif", uint8_t batteryLevel = 100);
+  BleKeyboard(std::string deviceName = "Super DIAL", std::string deviceManufacturer = "Espressif", uint8_t batteryLevel = 100);
   void begin(void);
   void end(void);
   void sendReport(KeyReport* keys);
@@ -181,23 +180,23 @@ public:
   size_t release(const MediaKeyReport k);
   size_t write(uint8_t c);
   size_t write(const MediaKeyReport c);
-  size_t write(const uint8_t *buffer, size_t size);
+  size_t write(const uint8_t* buffer, size_t size);
   void releaseAll(void);
   bool isConnected(void);
   void setBatteryLevel(uint8_t level);
-  void setName(std::string deviceName);  
+  void setName(std::string deviceName);
   void setDelay(uint32_t ms);
 
   void set_vendor_id(uint16_t vid);
   void set_product_id(uint16_t pid);
   void set_version(uint16_t version);
+
 protected:
-  virtual void onStarted(BLEServer *pServer) { };
+  virtual void onStarted(BLEServer* pServer){};
   virtual void onConnect(BLEServer* pServer) override;
   virtual void onDisconnect(BLEServer* pServer) override;
   virtual void onWrite(BLECharacteristic* me) override;
-
 };
 
-#endif // CONFIG_BT_ENABLED
-#endif // ESP32_BLE_KEYBOARD_H
+#endif  // CONFIG_BT_ENABLED
+#endif  // ESP32_BLE_KEYBOARD_H

@@ -178,6 +178,7 @@ void BleKeyboard::begin(void)
 
 void BleKeyboard::end(void)
 {
+  BLEDevice::deinit();
 }
 
 bool BleKeyboard::isConnected(void) {
