@@ -29,6 +29,14 @@ void setup() {
   assert(queue_ != NULL);
   knob_state_queue_ = xQueueCreate(1, sizeof(KnobState));
   assert(knob_state_queue_ != NULL);
+    xTaskCreatePinnedToCore(
+    interface_run,
+    "interface_run",
+    8192,
+    NULL,
+    2,
+    &xTask3,
+    1);
   xTaskCreatePinnedToCore(
     motor_run,
     "motor_task", /* 任务名称. */
@@ -48,14 +56,7 @@ void setup() {
     &xTask2,
     0);
 
-  xTaskCreatePinnedToCore(
-    interface_run,
-    "interface_run",
-    8192,
-    NULL,
-    2,
-    &xTask3,
-    1);
+
 
 
 
