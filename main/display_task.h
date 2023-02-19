@@ -1,3 +1,6 @@
+#ifndef __DISPLAY_TASK_H__
+#define __DISPLAY_TASK_H__
+
 #include <lvgl.h>
 #include <Arduino_GFX_Library.h>
 #include <esp_heap_caps.h>
@@ -125,3 +128,5 @@ void display_run(void *parameter) {
     vTaskDelay(10);
   }
 }
+
+#endif

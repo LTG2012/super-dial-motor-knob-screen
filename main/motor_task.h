@@ -1,3 +1,5 @@
+#ifndef __MOTOR_TASK_H__
+#define __MOTOR_TASK_H__
 #include <Arduino.h>
 #include <SimpleFOC.h>
 #include "EEPROM.h"
@@ -501,3 +503,5 @@ void calibrate() {
   Serial.printf("  MOTOR_POLE_PAIRS: %d\n", motor.pole_pairs);
   delay(2000);
 }
+
+#endif

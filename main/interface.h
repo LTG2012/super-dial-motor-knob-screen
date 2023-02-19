@@ -1,3 +1,6 @@
+#ifndef __INTERFACE_H__
+#define __INTERFACE_H__
+
 #include "RGB.h"
 #include "BleKeyboard.h"
 #include "OneButton.h"
@@ -9,12 +12,15 @@
 #include "USB.h"
 #include "USBHID.h"
 #include "driver/rtc_io.h"
+#include "display_task.h"
+#include "Watchdog.h"
 USBHID HID;
 
+WATCHDOG Watchdog;//看门狗对象.
 
 
-static const uint8_t report_descriptor[] = { // 8 axis
-    // DIAL
+static const uint8_t report_descriptor[] = {  // 8 axis
+  // DIAL
   0x05, 0x01,
   0x09, 0x0e,
   0xa1, 0x01,
@@ -44,36 +50,35 @@ static const uint8_t report_descriptor[] = { // 8 axis
   0xc0
 };
 
-class CustomHIDDevice: public USBHIDDevice {
+class CustomHIDDevice : public USBHIDDevice {
 public:
-  CustomHIDDevice(void){
+  CustomHIDDevice(void) {
     static bool initialized = false;
-    if(!initialized){
+    if (!initialized) {
       initialized = true;
       HID.addDevice(this, sizeof(report_descriptor));
     }
   }
-  
-  void begin(void){
+
+  void begin(void) {
     HID.begin();
   }
-  void end(void)
-  {
+  void end(void) {
     HID.end();
   }
-  uint16_t _onGetDescriptor(uint8_t* buffer){
+  uint16_t _onGetDescriptor(uint8_t *buffer) {
     memcpy(buffer, report_descriptor, sizeof(report_descriptor));
     return sizeof(report_descriptor);
   }
 
-  bool send(uint8_t keys){
-    
+  bool send(uint8_t keys) {
+
     uint8_t dial_report[2];
     dial_report[0] = keys;
     dial_report[1] = 0;
-    if(keys == DIAL_L|| keys == DIAL_L_F)
+    if (keys == DIAL_L || keys == DIAL_L_F)
       dial_report[1] = 0xff;
-  return HID.SendReport(10, dial_report, 2);
+    return HID.SendReport(10, dial_report, 2);
   }
 };
 
@@ -87,7 +92,7 @@ const char *password = "";
 WebServer server(80);
 
 
- BleKeyboard bleKeyboard;
+BleKeyboard bleKeyboard;
 void AutoWifiConfig();
 
 
@@ -129,13 +134,13 @@ static KnobConfig configs[] = {
     //3 主界面
     0,
     0,
-    45 * PI / 180,
+    90 * PI / 180,
     1,
     1,
     0.55,  // Note the snap point is slightly past the midpoint (0.5); compare to normal detents which use a snap point *past* the next value (i.e. > 1)
   },
   {
-    1,//4
+    1,  //4
     0,
     60 * PI / 180,
     0.01,
@@ -143,7 +148,7 @@ static KnobConfig configs[] = {
     1.1,
   },
   {
-    256,//5
+    256,  //5
     127,
     1 * PI / 180,
     0,
@@ -184,17 +189,17 @@ static KnobConfig configs[] = {
 #define OFF_UP_PIN GPIO_NUM_6
 #define PUSH_BUTTON GPIO_NUM_5
 #define IO_ON_OFF GPIO_NUM_18
-OneButton button(PUSH_BUTTON, true,true);
+OneButton button(PUSH_BUTTON, true, true);
 bool offset_flag;
 uint32_t interface_time;
 uint8_t push_flag, push_states;
 uint32_t push_time, push_in_time, push_two_time;
 uint8_t dial_flag;
 uint8_t power_scale = 50;  // 力度
-uint8_t angle_scale = 25;  //角度
+uint8_t angle_scale = 75;  //角度
 uint8_t push_scale = 3;
 
-uint8_t lv_page = 0,lv_adjust_flag =0;
+uint8_t lv_page = 0, lv_adjust_flag = 0;
 void doubleclick() {
   push_states = 2;
   Serial.println("doubleclick");
@@ -227,9 +232,28 @@ void power_off() {
   digitalWrite(OFF_PIN, LOW);
   delay(200);
   digitalWrite(OFF_PIN, HIGH);
+
+  rgb_off();
+  digitalWrite(TFT_BLK, LOW);
+  sleep_flag = 1;
+  motor.disable();
+
+  rtc_gpio_init(TFT_BLK);
+  rtc_gpio_init(PUSH_BUTTON);
+
+  rtc_gpio_pullup_dis(TFT_BLK);
+  rtc_gpio_pulldown_en(TFT_BLK);
+
+  rtc_gpio_pullup_en(PUSH_BUTTON);
+  rtc_gpio_pulldown_dis(PUSH_BUTTON);
+
+  gpio_deep_sleep_hold_en();
+
+  esp_sleep_enable_ext0_wakeup(PUSH_BUTTON, 0);  //1 = High, 0 = Low
+  Serial.println("Going to sleep now");
+  esp_deep_sleep_start();
 }
-void eeprom_read()
-{
+void eeprom_read() {
   if (isnan(EEPROM.readUChar(4))) {
     Serial.println("write power");
     EEPROM.writeUChar(4, 50);
@@ -249,14 +273,14 @@ void eeprom_read()
   }
   if (isnan(EEPROM.readUChar(8))) {
     Serial.println("write angle");
-    EEPROM.writeUChar(8, 25);
+    EEPROM.writeUChar(8, 75);
     delay(10);
     EEPROM.commit();
 
   } else {
     if (EEPROM.readUChar(8) > 100) {
       Serial.println("write angle1");
-      EEPROM.writeUChar(8, 25);
+      EEPROM.writeUChar(8, 75);
       delay(10);
       EEPROM.commit();
     } else {
@@ -282,8 +306,26 @@ void eeprom_read()
     }
   }
 }
-void send_config(uint8_t num)
-{
+// 长时间休眠
+void sleep_time(uint8_t move) {
+  static uint16_t time = 0;
+  static uint8_t dis_flag = 0;
+  if (move) {
+    time = 0;
+    digitalWrite(TFT_BLK, HIGH);
+  }
+
+  time++;
+  Serial.println(time);
+  // 50为一秒   3000为一分钟
+  if (time > 1500) {
+    digitalWrite(TFT_BLK, LOW);
+  }
+  if (time > 15000) {
+    power_off();
+  }
+}
+void send_config(uint8_t num) {
   KnobConfig set_config;
   set_config = configs[num];
   set_config.detent_strength_unit = configs[num].detent_strength_unit * (100 - power_scale) * 0.02;
@@ -292,6 +334,7 @@ void send_config(uint8_t num)
 }
 void interface_run(void *parameter) {
   uint16_t img_angle = 0, position_flag = 0, last_img_angle = 0;
+  float last_adjusted_angle = 0;
   int16_t last_position = 0;
   uint8_t p;  //当前选择的位置
   KnobConfig set_config;
@@ -303,7 +346,7 @@ void interface_run(void *parameter) {
   button.attachLongPressStart(longPressStart);
   //  button.attachDuringLongPress(duringLongPress);
   button.attachLongPressStop(longPressStop);
-  
+
   USB.begin();
 
 
@@ -327,15 +370,42 @@ void interface_run(void *parameter) {
 
   send_config(3);
   Serial.println("setConfig");
+  Watchdog.begin();//默认定时器0,10秒超时.
   while (1) {
+    Watchdog.feed();//喂狗
+    sleep_time(0);
     if (xQueueReceive(knob_state_queue_, &state, 0) == pdTRUE) {
       pthread_mutex_lock(&lvgl_mutex);
       float adjusted_sub_position, raw_angle, adjusted_angle;
+      
+      adjusted_sub_position = state.sub_position_unit * state.config.position_width_radians;
+          raw_angle = state.current_position * state.config.position_width_radians;
+          adjusted_angle = -(raw_angle + adjusted_sub_position);
+          if (adjusted_angle > 0)
+            img_angle = (uint16_t)(adjusted_angle * 573) % 3600;
+          else
+            img_angle = 3600 - (uint16_t)(abs(adjusted_angle) * 573) % 3600;
+      // Serial.print(last_adjusted_angle);
+      // Serial.print("/");
+      // Serial.println(abs(adjusted_angle-last_adjusted_angle));
+      if (abs(adjusted_angle-last_adjusted_angle) > 0.05) {
+        
+            sleep_time(1);
+            last_adjusted_angle = adjusted_angle;
+          }
+
       // Serial.print(raw_angle);
-      // Serial.print("~");
-      // Serial.println(adjusted_angle);
+      // Serial.print("/");
+      // Serial.print(adjusted_angle);
+      // Serial.print("/");
+      // Serial.print(img_angle);
+      // Serial.print("/");
+      // Serial.print(last_img_angle);
+      // Serial.print("/");
+      // Serial.println((uint16_t)(adjusted_angle * 573));
       if (last_position != state.current_position) {
         position_flag = 1;
+        sleep_time(1);
         if (state.current_position - last_position > 0)
           dial_flag = 1;
         else
@@ -351,18 +421,19 @@ void interface_run(void *parameter) {
             img_angle = (uint16_t)(adjusted_angle * 573) % 3600;
           else
             img_angle = 3600 - (uint16_t)(abs(adjusted_angle) * 573) % 3600;
-          if (abs(img_angle - last_img_angle) > 5) {
-            lv_img_set_angle(ui_Image0_2, img_angle);
-            last_img_angle = img_angle;
-          }
-
-          if (position_flag) {
-            position_flag = 0;
-            if (state.current_position < 0)
-              p = (4 - abs(state.current_position) % 4) % 4;
-            else
-              p = state.current_position % 4;
-
+        //   if (abs(img_angle - last_img_angle) > 50) {
+        //     lv_img_set_angle(ui_Image0_2, img_angle);
+        //     last_img_angle = img_angle;
+        //   }
+          lv_img_set_angle(ui_Image0_2, img_angle);
+            if((img_angle>=0 && img_angle<=450)  ||  (img_angle>3150 && img_angle<=3600))
+              p = 0;
+            else if((img_angle>450 && img_angle<=1350))
+              p = 3;
+            else if((img_angle>1350 && img_angle<=2250))
+              p = 2;
+            else if((img_angle>2250 && img_angle<=3150))
+              p = 1;
             switch (p) {
               case 0:
                 lv_obj_set_style_outline_width(ui_Image0_0, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -389,36 +460,37 @@ void interface_run(void *parameter) {
                 lv_obj_set_style_outline_width(ui_Image0_4, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
                 break;
             }
-          }
           break;
         case 1:
-          adjusted_sub_position = state.sub_position_unit * state.config.position_width_radians;
-          raw_angle = state.current_position * state.config.position_width_radians;
-          adjusted_angle = -(raw_angle + adjusted_sub_position);
-          if (adjusted_angle > 0)
-            img_angle = (uint16_t)(adjusted_angle * 573) % 3600;
-          else
-            img_angle = 3600 - (uint16_t)(abs(adjusted_angle) * 573) % 3600;
-          if (abs(img_angle - last_img_angle) > 5) {
-            lv_img_set_angle(ui_Image2, img_angle);
-            last_img_angle = img_angle;
-          }
+
+          // adjusted_sub_position = state.sub_position_unit * state.config.position_width_radians;
+          // raw_angle = state.current_position * state.config.position_width_radians;
+          // adjusted_angle = -(raw_angle + adjusted_sub_position);
+          // if (adjusted_angle > 0)
+          //   img_angle = (uint16_t)(adjusted_angle * 573) % 3600;
+          // else
+          //   img_angle = 3600 - (uint16_t)(abs(adjusted_angle) * 573) % 3600;
+          // if (abs(img_angle - last_img_angle) > 5) {
+          //   lv_img_set_angle(ui_Image2, img_angle);
+          //   last_img_angle = img_angle;
+          // }
+          lv_img_set_angle(ui_Image2, img_angle);
           break;
         case 2:
 
-          switch(lv_adjust_flag)  //--------------------------------------------------------------------------
-                    {
-                      case 0://力度
-                        power_scale = state.current_position;
-                        set_config.position = power_scale;
-                        break;
-                      case 1://角度
-                        angle_scale = state.current_position;
-                        set_config.position = angle_scale;
-                        break;
-                      case 2://按钮强度
-                        break;
-                    }
+          switch (lv_adjust_flag)  //--------------------------------------------------------------------------
+          {
+            case 0:  //力度
+              power_scale = state.current_position;
+              set_config.position = power_scale;
+              break;
+            case 1:  //角度
+              angle_scale = state.current_position;
+              set_config.position = angle_scale;
+              break;
+            case 2:  //按钮强度
+              break;
+          }
           lv_meter_set_indicator_value(meter, line_indic, 100 - state.current_position);
           break;
       }
@@ -495,56 +567,36 @@ void interface_run(void *parameter) {
                   break;
                 case 1:  //力度设置界面
                   lv_event_send(ui_Button0, LV_EVENT_RELEASED, 0);
-                    switch(lv_adjust_flag)
-                    {
-                      case 0:
-                        lv_label_set_text(ui2_Label1, "力度");
-                        configs[3].position = state.current_position;
-                        set_config = configs[7];
-                        set_config.position = power_scale;
-                        set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
-                        set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
-                        setConfig(set_config);
-                        break;
-                      case 1:
-                        lv_label_set_text(ui2_Label1, "角度");
-                        configs[3].position = state.current_position;
-                        set_config = configs[7];
-                        set_config.position = angle_scale;
-                        set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
-                        set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
-                        setConfig(set_config);
-                        break;
-                      case 2:
-                        lv_label_set_text(ui2_Label1, "按钮强度");
-                        break;
-                    }
-                      
-                  
+                  switch (lv_adjust_flag) {
+                    case 0:
+                      lv_label_set_text(ui2_Label1, "力度");
+                      configs[3].position = state.current_position;
+                      set_config = configs[7];
+                      set_config.position = power_scale;
+                      set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
+                      set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
+                      setConfig(set_config);
+                      break;
+                    case 1:
+                      lv_label_set_text(ui2_Label1, "角度");
+                      configs[3].position = state.current_position;
+                      set_config = configs[7];
+                      set_config.position = angle_scale;
+                      set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
+                      set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
+                      setConfig(set_config);
+                      break;
+                    case 2:
+                      lv_label_set_text(ui2_Label1, "按钮强度");
+                      break;
+                  }
+
+
                   lv_page = 2;
                   Serial.println(lv_page);
                   break;
-                case 2:  //关机
+                case 2:         //关机
                   power_off();  //ip5306关机
-                  rgb_off();  
-                  digitalWrite(TFT_BLK, LOW);
-                  sleep_flag = 1;
-                  motor.disable();
-
-                  rtc_gpio_init(TFT_BLK);
-                  rtc_gpio_init(PUSH_BUTTON);
-
-                  rtc_gpio_pullup_dis(TFT_BLK);
-                  rtc_gpio_pulldown_en(TFT_BLK);
-
-                  rtc_gpio_pullup_en(PUSH_BUTTON);
-                  rtc_gpio_pulldown_dis(PUSH_BUTTON);
-
-                  gpio_deep_sleep_hold_en();
-
-                  esp_sleep_enable_ext0_wakeup(PUSH_BUTTON,0); //1 = High, 0 = Low
-                  Serial.println("Going to sleep now");
-                  esp_deep_sleep_start();
 
                   break;
                 case 3:  //跳转到设置
@@ -607,26 +659,23 @@ void interface_run(void *parameter) {
                 bleKeyboard.sendDialReport(DIAL_PRESS);
                 delay(50);
                 bleKeyboard.sendDialReport(DIAL_RELEASE);
+              } else {
+                Device.send(DIAL_PRESS);
+                delay(50);
+                Device.send(DIAL_RELEASE);
               }
-              else
-              {
-                  Device.send(DIAL_PRESS);
-                  delay(50);
-                  Device.send(DIAL_RELEASE);
-              }
-              
+
               break;
             case 2:  //双击切换
               lv_event_send(ui_Button1, LV_EVENT_CLICKED, 0);
               send_config(3);
               lv_page = 0;
               Serial.println(lv_page);
-            
+
               if (bleKeyboard.isConnected()) {
                 bleKeyboard.sendDialReport(DIAL_RELEASE);
-                
-              }
-              else
+
+              } else
                 Device.send(DIAL_RELEASE);
 
               bleKeyboard.end();
@@ -648,7 +697,7 @@ void interface_run(void *parameter) {
               rgb_flag = 0;
               rgb_off();
               Serial.println("DIAL_RELEASE");
-              
+
               if (bleKeyboard.isConnected())
                 bleKeyboard.sendDialReport(DIAL_RELEASE);
               else
@@ -681,33 +730,32 @@ void interface_run(void *parameter) {
           }
           switch (push_states) {
             case 1:  //单击
-                lv_adjust_flag++;
-                if(lv_adjust_flag >1)
-                  lv_adjust_flag = 0;
-               switch(lv_adjust_flag)
-                    {
-                      case 0:
-                        lv_label_set_text(ui2_Label1, "力度");
-                        configs[3].position = state.current_position;
-                        set_config = configs[7];
-                        set_config.position = power_scale;
-                        set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
-                        set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
-                        setConfig(set_config);
-                        break;
-                      case 1:
-                        lv_label_set_text(ui2_Label1, "角度");
-                        configs[3].position = state.current_position;
-                        set_config = configs[7];
-                        set_config.position = angle_scale;
-                        set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
-                        set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
-                        setConfig(set_config);
-                        break;
-                      case 2:
-                        lv_label_set_text(ui2_Label1, "按钮强度");
-                        break;
-                    }
+              lv_adjust_flag++;
+              if (lv_adjust_flag > 1)
+                lv_adjust_flag = 0;
+              switch (lv_adjust_flag) {
+                case 0:
+                  lv_label_set_text(ui2_Label1, "力度");
+                  configs[3].position = state.current_position;
+                  set_config = configs[7];
+                  set_config.position = power_scale;
+                  set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
+                  set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
+                  setConfig(set_config);
+                  break;
+                case 1:
+                  lv_label_set_text(ui2_Label1, "角度");
+                  configs[3].position = state.current_position;
+                  set_config = configs[7];
+                  set_config.position = angle_scale;
+                  set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
+                  set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
+                  setConfig(set_config);
+                  break;
+                case 2:
+                  lv_label_set_text(ui2_Label1, "按钮强度");
+                  break;
+              }
               break;
             case 2:  //双击切换
               EEPROM.writeUChar(4, power_scale);
@@ -901,3 +949,4 @@ void AutoWifiConfig() {
     });
   server.begin();
 }
+#endif
