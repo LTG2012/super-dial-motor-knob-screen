@@ -15,7 +15,7 @@
 2022/11/24 修改bin文件，iic  -&gt; spi（老版本主控板不支持spi固件），替换力度控制功能为双击关机     spi固件已解决力度突然大突然小的问题，但是11.10之前版本的pcb不支持spi通信
 
 ## 1.项目介绍
-灵感来源与国外的smart konb，制作初衷为制作一个桌面力反馈旋钮，可以与电脑进行交互。项目从最重要的电机入手，选择了量大便宜的3205电机（小米云台电机的库存货），在结构上实现上下等大，增加实用功能蓝牙hid（轮盘功能），可实现与surface dial一样的功能。演示视频[“SuperDial电机旋钮——力反馈、多功能”](https://www.bilibili.com/video/BV1cG411c7QS)
+灵感来源与国外的smart konb，制作初衷为制作一个桌面力反馈旋钮，可以与电脑进行交互。项目从最重要的电机入手，选择了量大便宜的3205电机（小米云台电机的库存货），在结构上实现上下等大，增加实用功能蓝牙hid（滚轮功能），可实现与surface dial一样的功能。演示视频[“SuperDial电机旋钮——力反馈、多功能”](https://www.bilibili.com/video/BV1cG411c7QS)
 ## 2.制作说明
 硬件构成esp32s3-n16r8，屏幕为gc9a01，3个pcb，4个打印件，若干结构件。具体在附件——[附件gitee链接](https://gitee.com/coll45/super-dial-motor-knob-screen)
 

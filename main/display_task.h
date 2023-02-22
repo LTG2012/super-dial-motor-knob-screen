@@ -107,6 +107,7 @@ void display_init() {
     disp_drv.ver_res = screenHeight;
     disp_drv.flush_cb = my_disp_flush;
     disp_drv.draw_buf = &draw_buf;
+    disp_drv.full_refresh = 1;
     lv_disp_drv_register(&disp_drv);
 
     /* Initialize the (dummy) input device driver */

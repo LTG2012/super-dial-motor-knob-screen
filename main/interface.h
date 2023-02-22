@@ -316,7 +316,6 @@ void sleep_time(uint8_t move) {
   }
 
   time++;
-  Serial.println(time);
   // 50为一秒   3000为一分钟
   if (time > 1500) {
     digitalWrite(TFT_BLK, LOW);
