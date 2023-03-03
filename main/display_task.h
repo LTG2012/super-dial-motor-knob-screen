@@ -37,12 +37,12 @@ static pthread_mutex_t lvgl_mutex;
 Arduino_DataBus *bus = new Arduino_HWSPI(TFT_DC, TFT_CS, SCLK, MOSI, MISO);
 
 // 使用GC9A01 IPS LCD 240x240
-Arduino_GC9A01 *gfx = new Arduino_GC9A01(bus, TFT_RST, 2 /* 屏幕方向 */, true /* IPS */);
+Arduino_GC9A01 *gfx = new Arduino_GC9A01(bus, TFT_RST, 0 /* 屏幕方向 */, true /* IPS */);
 /*******************************************************************************
    End of Arduino_GFX setting
  ******************************************************************************/
 
-/* Change to your screen resolution */
+/* Change to your screen resolution */ 
 static uint32_t screenWidth;
 static uint32_t screenHeight;
 static lv_disp_draw_buf_t draw_buf;

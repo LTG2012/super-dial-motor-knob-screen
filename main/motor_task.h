@@ -301,7 +301,8 @@ void motor_run(void* parameter) {
       motor.monitor();
       //  Serial.println(millis());
     }
-    vTaskDelay(1);
+    // taskYIELD();
+     vTaskDelay(1);
   }
 
 }

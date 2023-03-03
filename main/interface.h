@@ -520,6 +520,15 @@ void interface_run(void *parameter) {
       }
       if (currentMillis - push_time > 10) {  //消抖10ms
         if (push_flag == 1) {
+          if(lv_page == 1)
+          {
+              if (bleKeyboard.isConnected()) {
+                bleKeyboard.sendDialReport(DIAL_PRESS);
+              } else {
+                Device.send(DIAL_PRESS);
+              }
+          }
+           
           push_flag = 2;
           push_in_time = currentMillis;
           playHaptic(push_scale);
@@ -533,6 +542,14 @@ void interface_run(void *parameter) {
       // rgb_off();
       push_two_time = currentMillis;
       push_flag = 0;
+      if(lv_page == 1)
+      {
+        if (bleKeyboard.isConnected()) {
+                bleKeyboard.sendDialReport(DIAL_RELEASE);
+              } else {
+                Device.send(DIAL_RELEASE);
+              }
+      }
     }
     // ---- 页面处理
     switch (lv_page) {
@@ -637,7 +654,13 @@ void interface_run(void *parameter) {
           } else if (dial_flag == 2) {
             strip3();
           }
-          //如果蓝牙连接成功
+          if(push_flag == 2)//按下旋转
+          {
+            ;
+          }
+          else
+          {
+            //如果蓝牙连接成功
           if (bleKeyboard.isConnected()) {
             if (dial_flag == 1) {
               bleKeyboard.sendDialReport(DIAL_L);
@@ -651,18 +674,20 @@ void interface_run(void *parameter) {
               Device.send(DIAL_R);
             }
           }
+          
+          }
           switch (push_states) {
             case 1:  //单击
 
-              if (bleKeyboard.isConnected()) {
-                bleKeyboard.sendDialReport(DIAL_PRESS);
-                delay(50);
-                bleKeyboard.sendDialReport(DIAL_RELEASE);
-              } else {
-                Device.send(DIAL_PRESS);
-                delay(50);
-                Device.send(DIAL_RELEASE);
-              }
+              // if (bleKeyboard.isConnected()) {
+              //   bleKeyboard.sendDialReport(DIAL_PRESS);
+              //   delay(50);
+              //   bleKeyboard.sendDialReport(DIAL_RELEASE);
+              // } else {
+              //   Device.send(DIAL_PRESS);
+              //   delay(50);
+              //   Device.send(DIAL_RELEASE);
+              // }
 
               break;
             case 2:  //双击切换
@@ -682,25 +707,25 @@ void interface_run(void *parameter) {
               break;
             case 3:  //长按
               rgb_flag = 2;
-              if (bleKeyboard.isConnected()) {
-                bleKeyboard.sendDialReport(DIAL_PRESS);
-                delay(500);
-                bleKeyboard.sendDialReport(DIAL_RELEASE);
-              } else {
-                Device.send(DIAL_PRESS);
-                delay(500);
-                Device.send(DIAL_RELEASE);
-              }
+              // if (bleKeyboard.isConnected()) {
+              //   bleKeyboard.sendDialReport(DIAL_PRESS);
+              //   delay(500);
+              //   bleKeyboard.sendDialReport(DIAL_RELEASE);
+              // } else {
+              //   Device.send(DIAL_PRESS);
+              //   delay(500);
+              //   Device.send(DIAL_RELEASE);
+              // }
               break;
             case 4:  //松开
               rgb_flag = 0;
               rgb_off();
               Serial.println("DIAL_RELEASE");
 
-              if (bleKeyboard.isConnected())
-                bleKeyboard.sendDialReport(DIAL_RELEASE);
-              else
-                Device.send(DIAL_RELEASE);
+              // if (bleKeyboard.isConnected())
+              //   bleKeyboard.sendDialReport(DIAL_RELEASE);
+              // else
+              //   Device.send(DIAL_RELEASE);
               break;
             default:
               break;
@@ -855,12 +880,17 @@ void interface_run(void *parameter) {
   }
 }
 const char *serverIndex =
-  "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
-  "<form method='POST' action='/update' enctype='multipart/form-data' id='upload_form'>"
+  "<!DOCTYPE html><html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">"
+  "<title>ESP32固件更新</title>"
+  "<script src=''></script></head>"
+  "<table width='20%' align='center'>"
+  "<tr><td>ESP32固件更新</td></tr>"
+  "<tr><td><form method='POST' action='/update' enctype='multipart/form-data' id='upload_form'>"
   "<input type='file' name='update'>"
   "<input type='submit' value='Update'>"
-  "</form>"
-  "<div id='prg'>progress: 0%</div>"
+  "</form></td></tr>"
+  "<tr><td><div id='prg'>progress: 0%</div></td></tr>"
+  "<tr><td>更新完成会自动重启，升级期间请勿断电</td></tr></table>"
   "<script>"
   "$('form').submit(function(e){"
   "e.preventDefault();"
@@ -889,7 +919,7 @@ const char *serverIndex =
   "}"
   "});"
   "});"
-  "</script>";
+  "</script></html>";
 void AutoWifiConfig() {
   //wifi初始化
   sprintf(mac_tmp, "%02X\r\n", (uint32_t)(ESP.getEfuseMac() >> (24)));
@@ -927,6 +957,8 @@ void AutoWifiConfig() {
       ESP.restart();
     },
     []() {
+      //vTaskDelay(1);
+      Watchdog.feed();
       HTTPUpload &upload = server.upload();
       if (upload.status == UPLOAD_FILE_START) {
         Serial.printf("Update: %s\n", upload.filename.c_str());
