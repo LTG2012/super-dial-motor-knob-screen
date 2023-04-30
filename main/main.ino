@@ -16,6 +16,7 @@ void setup() {
   // monitoring port
   Serial.begin(115200);
   delay(100);
+  ffat_init();
   if (!EEPROM.begin(1000)) {
     Serial.println("Failed to initialise EEPROM");
     Serial.println("Restarting...");
@@ -29,7 +30,7 @@ void setup() {
   assert(queue_ != NULL);
   knob_state_queue_ = xQueueCreate(1, sizeof(KnobState));
   assert(knob_state_queue_ != NULL);
-    xTaskCreatePinnedToCore(
+  xTaskCreatePinnedToCore(
     interface_run,
     "interface_run",
     8192,
@@ -45,7 +46,7 @@ void setup() {
     1,            /* 任务的优先级 */
     &xTask1,      /* 跟踪创建的任务的任务句柄 */
     1);           /* pin任务到核心0 */
-  
+
   display_init();
   xTaskCreatePinnedToCore(
     display_run,
@@ -57,15 +58,11 @@ void setup() {
     0);
 
 
-
-
-
-
   vTaskDelete(NULL);
 }
 
 void loop() {
-// lv_timer_handler(); /* let the GUI do its work */
-      // vTaskDelay(0); 
+  // lv_timer_handler(); /* let the GUI do its work */
+  // vTaskDelay(0);
   // motor_run();
 }

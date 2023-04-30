@@ -5,7 +5,7 @@
 #include <Arduino_GFX_Library.h>
 #include <esp_heap_caps.h>
 #include "ui.h"
-
+uint8_t screen_brightness = 50;
 static pthread_mutex_t lvgl_mutex;
 //设置引脚
 /*
@@ -77,10 +77,7 @@ void display_init() {
   gfx->begin();
   gfx->fillScreen(BLACK);
 
-#ifdef TFT_BLK
-  pinMode(TFT_BLK, OUTPUT);
-  digitalWrite(TFT_BLK, HIGH);
-#endif
+
 
 
   lv_init();

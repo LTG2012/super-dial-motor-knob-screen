@@ -2,9 +2,9 @@
 #define __MOTOR_TASK_H__
 #include <Arduino.h>
 #include <SimpleFOC.h>
-#include "EEPROM.h"
 #include "Wire.h"
 #include <SPI.h>
+#include "EEPROM.h"
 
 #define MO1 GPIO_NUM_17
 #define MO2 GPIO_NUM_16

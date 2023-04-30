@@ -4,17 +4,14 @@
 #include "RGB.h"
 #include "BleKeyboard.h"
 #include "OneButton.h"
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <WebServer.h>
-#include <ESPmDNS.h>
-#include <Update.h>
 #include "USB.h"
 #include "USBHID.h"
 #include "driver/rtc_io.h"
 #include "display_task.h"
 #include "Watchdog.h"
+#include "WifiAsyncWebServer.h"
 USBHID HID;
+TaskHandle_t xTask4; //wifi任务
 
 WATCHDOG Watchdog;//看门狗对象.
 
@@ -85,15 +82,8 @@ public:
 CustomHIDDevice Device;
 
 
-const char *ServerName = "ESP32-Reuleaux-RGB";
-char mac_tmp[6];
-const char *ssid = mac_tmp;
-const char *password = "";
-WebServer server(80);
-
 
 BleKeyboard bleKeyboard;
-void AutoWifiConfig();
 
 
 static KnobConfig configs[] = {
@@ -190,7 +180,6 @@ static KnobConfig configs[] = {
 #define PUSH_BUTTON GPIO_NUM_5
 #define IO_ON_OFF GPIO_NUM_18
 OneButton button(PUSH_BUTTON, true, true);
-bool offset_flag;
 uint32_t interface_time;
 uint8_t push_flag, push_states;
 uint32_t push_time, push_in_time, push_two_time;
@@ -234,7 +223,7 @@ void power_off() {
   digitalWrite(OFF_PIN, HIGH);
 
   rgb_off();
-  digitalWrite(TFT_BLK, LOW);
+  ledcWrite(0, 0);           // 通道0输出， PWM输出0~100%（0~2^10=1024）
   sleep_flag = 1;
   motor.disable();
 
@@ -305,6 +294,29 @@ void eeprom_read() {
       Serial.println(push_scale);
     }
   }
+if (isnan(EEPROM.readUChar(16))) {
+    Serial.println("write screen_brightness");
+    EEPROM.writeUChar(16, 50);
+    delay(10);
+    EEPROM.commit();
+
+  } else {
+    if (EEPROM.readUChar(16) > 100) {
+      Serial.println("write screen_brightness");
+      EEPROM.writeUChar(16, 50);
+      delay(10);
+      EEPROM.commit();
+    } else {
+      screen_brightness = EEPROM.readUChar(16);
+      Serial.println(screen_brightness);
+    }
+  }
+  #ifdef TFT_BLK
+  ledcSetup(0, 5000, 10);      //通道0， 5KHz，10位解析度
+  ledcAttachPin(TFT_BLK, 0);  //pin25定义为通道0的输出引脚
+   ledcWrite(0, screen_brightness *10);           // 通道0输出， PWM输出0~100%（0~2^10=1024）
+#endif
+  
 }
 // 长时间休眠
 void sleep_time(uint8_t move) {
@@ -312,13 +324,13 @@ void sleep_time(uint8_t move) {
   static uint8_t dis_flag = 0;
   if (move) {
     time = 0;
-    digitalWrite(TFT_BLK, HIGH);
+    ledcWrite(0, screen_brightness*10);           // 通道0输出， PWM输出0~100%（0~2^10=1024）
   }
 
   time++;
   // 50为一秒   3000为一分钟
   if (time > 1500) {
-    digitalWrite(TFT_BLK, LOW);
+    ledcWrite(0, 0);           // 通道0输出， PWM输出0~100%（0~2^10=1024）
   }
   if (time > 15000) {
     power_off();
@@ -487,7 +499,11 @@ void interface_run(void *parameter) {
               angle_scale = state.current_position;
               set_config.position = angle_scale;
               break;
-            case 2:  //按钮强度
+            case 2:  //亮度
+              screen_brightness = 100-state.current_position;
+              if(screen_brightness<5)
+                screen_brightness = 5;
+              set_config.position = state.current_position;
               break;
           }
           lv_meter_set_indicator_value(meter, line_indic, 100 - state.current_position);
@@ -500,6 +516,7 @@ void interface_run(void *parameter) {
     //rgb显示
     if (currentMillis - pixelPrevious >= pixelInterval) {  //  Check for expired time
       pixelPrevious = currentMillis;                       //  Run current frame
+      rainbow2();
       switch (rgb_flag) {
         case 0:
           break;
@@ -507,7 +524,7 @@ void interface_run(void *parameter) {
           role_fill();
           break;
         case 2:
-          rainbow2();
+          // rainbow2();
           break;
       }
     }
@@ -564,7 +581,7 @@ void interface_run(void *parameter) {
           switch (push_states) {
             case 1:  //单击
               if (sleep_flag) {
-                digitalWrite(TFT_BLK, HIGH);
+                ledcWrite(0, screen_brightness*10);           // 通道0输出， PWM输出0~100%（0~2^10=1024）
                 sleep_flag = 0;
                 motor.enable();
               }
@@ -603,7 +620,13 @@ void interface_run(void *parameter) {
                       setConfig(set_config);
                       break;
                     case 2:
-                      lv_label_set_text(ui2_Label1, "按钮强度");
+                      lv_label_set_text(ui2_Label1, "亮度");
+                      configs[3].position = state.current_position;
+                      set_config = configs[7];
+                      set_config.position = 100-screen_brightness;
+                      set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
+                      set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
+                      setConfig(set_config);
                       break;
                   }
 
@@ -625,11 +648,14 @@ void interface_run(void *parameter) {
                   send_config(1);
                   lv_page = 3;
                   Serial.println(lv_page);
-                  char str[10];
-                  sprintf(str, "%.2f", motor.zero_electric_angle);
-                  lv_label_set_text(ui_Label3, str);
-                  AutoWifiConfig();
-
+                  xTaskCreatePinnedToCore(
+                  wifi_server_begin,
+                  "wifi_server_begin", /* 任务名称. */
+                  8192,         /* 任务的堆栈大小 */
+                  NULL,         /* 任务的参数 */
+                  4,            /* 任务的优先级 */
+                  &xTask4,      /* 跟踪创建的任务的任务句柄 */
+                  1);           /* pin任务到核心0 */
                   break;
               }
               break;
@@ -755,7 +781,7 @@ void interface_run(void *parameter) {
           switch (push_states) {
             case 1:  //单击
               lv_adjust_flag++;
-              if (lv_adjust_flag > 1)
+              if (lv_adjust_flag > 2)
                 lv_adjust_flag = 0;
               switch (lv_adjust_flag) {
                 case 0:
@@ -777,7 +803,13 @@ void interface_run(void *parameter) {
                   setConfig(set_config);
                   break;
                 case 2:
-                  lv_label_set_text(ui2_Label1, "按钮强度");
+                  lv_label_set_text(ui2_Label1, "亮度");
+                      configs[3].position = state.current_position;
+                      set_config = configs[7];
+                      set_config.position = 100-screen_brightness;
+                      set_config.detent_strength_unit = configs[7].detent_strength_unit * (100 - power_scale) * 0.02;
+                      set_config.position_width_radians = configs[7].position_width_radians * (100 - angle_scale) * 0.04;
+                      setConfig(set_config);
                   break;
               }
               break;
@@ -790,6 +822,9 @@ void interface_run(void *parameter) {
               EEPROM.commit();
               Serial.println(angle_scale);
 
+              EEPROM.writeUChar(16, screen_brightness);
+              EEPROM.commit();
+              Serial.println(screen_brightness);
               lv_event_send(ui_Button2, LV_EVENT_CLICKED, 0);
               configs[7].position = state.current_position;
               send_config(3);
@@ -810,48 +845,23 @@ void interface_run(void *parameter) {
         break;
       case 3:
         {
-          server.handleClient();
           if (dial_flag == 1) {
-            if (offset_flag) {
-              motor.zero_electric_angle = motor.zero_electric_angle - 0.01;
-              char str[10];
-              sprintf(str, "%.2f", motor.zero_electric_angle);
-              lv_label_set_text(ui_Label3, str);
-            }
             strip2();
           } else if (dial_flag == 2) {
-            if (offset_flag) {
-              motor.zero_electric_angle = motor.zero_electric_angle + 0.01;
-              char str[10];
-              sprintf(str, "%.2f", motor.zero_electric_angle);
-              lv_label_set_text(ui_Label3, str);
-            }
             strip3();
           }
           switch (push_states) {
             case 1:  //单击
-              if (offset_flag) {
-                offset_flag = 0;
-                lv_obj_set_style_text_color(ui_Label3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-                EEPROM.writeFloat(0, motor.zero_electric_angle);
-                EEPROM.commit();
-                send_config(1);
-              } else {
-                offset_flag = 1;
-                lv_obj_set_style_text_color(ui_Label3, lv_color_hex(0xFF4B4B), LV_PART_MAIN | LV_STATE_DEFAULT);
-                send_config(2);
-              }
               break;
             case 2:  //双击切换
-              offset_flag = 0;
-              lv_obj_set_style_text_color(ui_Label3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-              EEPROM.writeFloat(0, motor.zero_electric_angle);
-              EEPROM.commit();
+
               lv_event_send(ui_Button2, LV_EVENT_CLICKED, 0);
               send_config(3);
               lv_page = 0;
               WiFi.disconnect();
               WiFi.mode(WIFI_OFF);
+              vTaskDelete(xTask4);
+
               // motor.enable();
               break;
             case 3:  //长按
@@ -878,106 +888,5 @@ void interface_run(void *parameter) {
 
     vTaskDelay(20);
   }
-}
-const char *serverIndex =
-  "<!DOCTYPE html><html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">"
-  "<title>ESP32固件更新</title>"
-  "<script src=''></script></head>"
-  "<table width='20%' align='center'>"
-  "<tr><td>ESP32固件更新</td></tr>"
-  "<tr><td><form method='POST' action='/update' enctype='multipart/form-data' id='upload_form'>"
-  "<input type='file' name='update'>"
-  "<input type='submit' value='Update'>"
-  "</form></td></tr>"
-  "<tr><td><div id='prg'>progress: 0%</div></td></tr>"
-  "<tr><td>更新完成会自动重启，升级期间请勿断电</td></tr></table>"
-  "<script>"
-  "$('form').submit(function(e){"
-  "e.preventDefault();"
-  "var form = $('#upload_form')[0];"
-  "var data = new FormData(form);"
-  " $.ajax({"
-  "url: '/update',"
-  "type: 'POST',"
-  "data: data,"
-  "contentType: false,"
-  "processData:false,"
-  "xhr: function() {"
-  "var xhr = new window.XMLHttpRequest();"
-  "xhr.upload.addEventListener('progress', function(evt) {"
-  "if (evt.lengthComputable) {"
-  "var per = evt.loaded / evt.total;"
-  "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
-  "}"
-  "}, false);"
-  "return xhr;"
-  "},"
-  "success:function(d, s) {"
-  "console.log('success!')"
-  "},"
-  "error: function (a, b, c) {"
-  "}"
-  "});"
-  "});"
-  "</script></html>";
-void AutoWifiConfig() {
-  //wifi初始化
-  sprintf(mac_tmp, "%02X\r\n", (uint32_t)(ESP.getEfuseMac() >> (24)));
-  sprintf(mac_tmp, "ESP32-%c%c%c%c%c%c", mac_tmp[4], mac_tmp[5], mac_tmp[2], mac_tmp[3], mac_tmp[0], mac_tmp[1]);
-
-  WiFi.mode(WIFI_AP);
-  while (!WiFi.softAP(ssid, password)) {};  //启动AP
-  Serial.println("AP启动成功");
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.softAPIP());
-  byte mac[6];
-  WiFi.macAddress(mac);
-  WiFi.setHostname(ServerName);
-  Serial.printf("macAddress 0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X\r\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-  /*use mdns for host name resolution*/
-  if (!MDNS.begin(ssid)) {  //http://esp32.local
-    Serial.println("Error setting up MDNS responder!");
-    while (1) {
-      delay(1000);
-    }
-  }
-  Serial.println("mDNS responder started");
-  /*return index page which is stored in serverIndex */
-  server.on("/", HTTP_GET, []() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", serverIndex);
-  });
-  /*handling uploading firmware file */
-  server.on(
-    "/update", HTTP_POST, []() {
-      server.sendHeader("Connection", "close");
-      server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-      ESP.restart();
-    },
-    []() {
-      //vTaskDelay(1);
-      Watchdog.feed();
-      HTTPUpload &upload = server.upload();
-      if (upload.status == UPLOAD_FILE_START) {
-        Serial.printf("Update: %s\n", upload.filename.c_str());
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {  //start with max available size
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_WRITE) {
-        /* flashing firmware to ESP*/
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) {  //true to set the size to the current progress
-          Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-        } else {
-          Update.printError(Serial);
-        }
-      }
-    });
-  server.begin();
 }
 #endif

@@ -12,7 +12,7 @@
     private:
       hw_timer_t *timer = NULL;//定时器对象.
       uint8_t Timerindex=0;//硬件定时器编号.默认定时器0.
-      uint16_t Timeout=10000;//定时器计数.默认10秒超时.
+      uint16_t Timeout=15000;//定时器计数.默认15秒超时.
     protected:
       static void Callback(){
         //定时器溢出回调函数,直接复位.
@@ -26,7 +26,7 @@
         timerAlarmEnable(timer);//开启定时器。
       }
     public:
-      WATCHDOG(){Timerindex=0;Timeout=10000;}
+      WATCHDOG(){Timerindex=0;Timeout=15000;}
       void begin(){Init();}
       void begin(uint8_t Esp_Timerindex,uint16_t Esp_Timerout){Timerindex=Esp_Timerindex,Timeout=Esp_Timerout;begin();}
       void feed(void){timerWrite(timer,0);}//喂狗.

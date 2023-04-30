@@ -15,7 +15,6 @@ extern "C" {
 #else
 #include "lvgl/lvgl.h"
 #endif
-
 extern lv_obj_t * ui_Screen1;
 extern lv_obj_t * ui_Image1;
 extern lv_obj_t * ui_Image2;
@@ -39,7 +38,6 @@ extern lv_obj_t * ui_Screen3;
 extern lv_obj_t * ui_Spinner1;
 extern lv_obj_t * ui_Label2;
 extern lv_obj_t * ui_Label3;
-extern lv_obj_t * ui_Label4;
 
 LV_IMG_DECLARE(ui_img_miku1_png);    // assets\miku1.png
 LV_IMG_DECLARE(ui_img_onion2_png);    // assets\onion2.png
