@@ -1,23 +1,5 @@
 *************************** START ****************************
-START TIME: 202211241123
-CONNECT BAUD: 115200
-*************************** START ****************************
-START TIME: 202211241123
-CONNECT BAUD: 115200
-*************************** START ****************************
-START TIME: 202211241123
-CONNECT BAUD: 115200
-*************************** START ****************************
-START TIME: 202211241123
-CONNECT BAUD: 115200
-*************************** START ****************************
-START TIME: 202211241123
-CONNECT BAUD: 115200
-*************************** START ****************************
-START TIME: 202211241123
-CONNECT BAUD: 115200
-*************************** START ****************************
-START TIME: 202211241123
+START TIME: 202309061612
 CONNECT BAUD: 115200
 set state: ESP_DL_SYNC
 serial port opened
@@ -28,22 +10,22 @@ root baud:115200
 ===============BAUD : 115200===============CALL DEVICE SYNC
 connecting...
 chip sync ok
-mac l: 0xfad3f664
-mac h: 0xf412
+mac l: 0x18910764
+mac h: 0x3485
 get mac res: 1
 get flash id : 0x001840c8
 manufacturer_id: 0xc8
 device_id: 0x4018
-Wrote 1306784 bytes (710446 compressed) at 0x00000000 in 10.8 seconds (effective 967.8 kbit/s)...
+Wrote 2074336 bytes (1146134 compressed) at 0x00000000 in 12.4 seconds (effective 1341.2 kbit/s)...
 Hash of data verified.
 Leaving...
 com closed
-Use time: 14 s
+Use time: 17 s
 Download result: PASS
 *************************** END ****************************
 
 *************************** START ****************************
-START TIME: 202309131203
+START TIME: 202309061612
 CONNECT BAUD: 115200
 set state: ESP_DL_SYNC
 serial port opened
@@ -54,22 +36,22 @@ root baud:115200
 ===============BAUD : 115200===============CALL DEVICE SYNC
 connecting...
 chip sync ok
-mac l: 0xfad3f664
-mac h: 0xf412
+mac l: 0x18910764
+mac h: 0x3485
 get mac res: 1
 get flash id : 0x001840c8
 manufacturer_id: 0xc8
 device_id: 0x4018
-Wrote 2014224 bytes (1146900 compressed) at 0x00010000 in 13.7 seconds (effective 1175.3 kbit/s)...
+Wrote 1456784 bytes (776188 compressed) at 0x00010000 in 10.0 seconds (effective 1167.0 kbit/s)...
 Hash of data verified.
 Leaving...
 com closed
-Use time: 18 s
+Use time: 13 s
 Download result: PASS
 *************************** END ****************************
 
 *************************** START ****************************
-START TIME: 202309141547
+START TIME: 202309181849
 CONNECT BAUD: 115200
 set state: ESP_DL_SYNC
 serial port opened
@@ -80,13 +62,13 @@ root baud:115200
 ===============BAUD : 115200===============CALL DEVICE SYNC
 connecting...
 chip sync ok
-mac l: 0xfad3f664
-mac h: 0xf412
+mac l: 0x18910764
+mac h: 0x3485
 get mac res: 1
 get flash id : 0x001840c8
 manufacturer_id: 0xc8
 device_id: 0x4018
-Wrote 2074336 bytes (1146134 compressed) at 0x00000000 in 13.9 seconds (effective 1197.9 kbit/s)...
+Wrote 2063104 bytes (1144506 compressed) at 0x00000000 in 14.0 seconds (effective 1178.9 kbit/s)...
 Hash of data verified.
 Leaving...
 com closed
