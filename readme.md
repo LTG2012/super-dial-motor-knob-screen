@@ -82,8 +82,10 @@ idf的代码开放到wifi功能之前，可以实现力反馈控制、lvgl、USB
 QQ群：816782369
 
 ## 感谢与引用
-非常感谢虫二大佬和立创的星火计划，让项目能够快速迭代落地 [fywbchong2](https://space.bilibili.com/438787726)
+非常感谢虫二和立创的星火计划，让项目能够快速迭代落地 [fywbchong2](https://space.bilibili.com/438787726)
 
-同时也感谢xknob作者mos大佬，idf的代码更新参考了xknob功能 [xknob-项目链接](https://github.com/SmallPond/X-Knob)
+同时也感谢xknob作者mos，idf的代码更新参考了xknob功能 [xknob-项目链接](https://github.com/SmallPond/X-Knob)
 
 还有非常感谢乐鑫开发者[老酸菜](https://github.com/lijunru-hub)提供的帮助，在idf开发过程中很多代码都是直接沿用[esp-iot-solution](https://github.com/espressif/esp-iot-solution/tree/master)中的示例
+
+网页ui参考了开源作者：muyan的ESP32 UPS 12V [ESP32 UPS 12V 项目链接](https://gitee.com/muyan3000/esp32-ups-12-v)
