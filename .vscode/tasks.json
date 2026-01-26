@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "LVGL Sim: Configure",
+      "type": "shell",
+      "command": "cmake -S pc_sim -B pc_sim/build",
+      "problemMatcher": []
+    },
+    {
+      "label": "LVGL Sim: Configure (vcpkg)",
+      "type": "shell",
+      "command": "cmake -S pc_sim -B pc_sim/build -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake",
+      "problemMatcher": []
+    },
+    {
+      "label": "LVGL Sim: Build",
+      "type": "shell",
+      "command": "cmake --build pc_sim/build",
+      "problemMatcher": []
+    },
+    {
+      "label": "LVGL Sim: Run",
+      "type": "shell",
+      "command": "pc_sim/build/superdial_ui_sim.exe",
+      "dependsOn": [
+        "LVGL Sim: Build"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
