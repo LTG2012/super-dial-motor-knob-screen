@@ -1,0 +1,38 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+.vs/
+*.code-workspace
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ESP-IDF
+idf_code/build/
+idf_code/managed_components/
+idf_code/sdkconfig.old
+idf_code/sdkconfig.*.old
+
+# Arduino/PlatformIO
+arduino_code/**/build/
+arduino_code/**/build-*/
+arduino_code/**/.idea/
+arduino_code/**/.vs/
+arduino_code/**/.vscode/
+arduino_code/**/.arduinoIDE/
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Logs/temp
+bin/dl_temp/
+bin/logs/
+bin/bin_tmp/
+**/*.log

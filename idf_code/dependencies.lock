@@ -1,81 +1,82 @@
 dependencies:
-  espressif/cmake_utilities:
-    component_hash: 351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f
+  espressif/arduino-foc:
+    dependencies: []
     source:
-      service_url: https://api.components.espressif.com/
-      type: service
-    version: 0.5.3
-  espressif/iqmath:
-    component_hash: 407d5bc3fd358a73d2b09982918ab508b4e804cc547942c5979d226be86b7e75
-    source:
-      service_url: https://api.components.espressif.com/
-      type: service
-    version: 1.11.0
-  espressif__arduino-foc:
-    component_hash: null
-    source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\espressif__arduino-foc
+      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__arduino-foc
       type: local
     version: 2.3.0~3
-  espressif__button:
-    component_hash: null
+  espressif/button:
+    dependencies: []
     source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\espressif__button
+      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__button
       type: local
     version: 3.2.0
-  espressif__cmake_utilities:
-    component_hash: null
+  espressif/cmake_utilities:
+    component_hash: 351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.1'
     source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\espressif__cmake_utilities
-      type: local
+      registry_url: https://components.espressif.com/
+      type: service
     version: 0.5.3
-  espressif__esp_lcd_gc9a01:
-    component_hash: null
+  espressif/esp_lcd_gc9a01:
+    dependencies: []
     source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\espressif__esp_lcd_gc9a01
+      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__esp_lcd_gc9a01
       type: local
     version: 2.0.0
-  espressif__esp_lvgl_port:
-    component_hash: null
+  espressif/esp_lvgl_port:
+    dependencies: []
     source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\espressif__esp_lvgl_port
+      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__esp_lvgl_port
       type: local
     version: 1.4.0
-  espressif__esp_simplefoc:
-    component_hash: null
+  espressif/esp_simplefoc:
+    dependencies: []
     source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\espressif__esp_simplefoc
+      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__esp_simplefoc
       type: local
     version: 0.1.1
-  espressif__iqmath:
-    component_hash: null
+  espressif/iqmath:
+    component_hash: 39448db759b410373e543798167ca4670bbff3019cb290a2fe8e627221e71b9d
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.4'
     source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\espressif__iqmath
-      type: local
-    version: 1.11.0
-  espressif__tinyusb:
-    component_hash: null
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.11.0~1
+  espressif/tinyusb:
+    dependencies: []
     source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\espressif__tinyusb
+      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__tinyusb
       type: local
     version: 0.15.0~5
   idf:
-    component_hash: null
     source:
       type: idf
-    version: 5.2.0
+    version: 5.5.2
   lvgl/lvgl:
     component_hash: d7c1ac037ae6e85d94897f807d6e7ba0946a83e720074fc95a4f6241da9f9f53
+    dependencies: []
     source:
-      service_url: https://api.components.espressif.com/
+      registry_url: https://components.espressif.com/
       type: service
     version: 8.4.0
-  lvgl__lvgl:
-    component_hash: null
-    source:
-      path: D:\superdial\esp_idf_lvgl_foc_knob\components\lvgl__lvgl
-      type: local
-    version: 8.4.0
-manifest_hash: 7f1fb3ee544a905a682a6c9aca976e9a217f5c126f7bbb2b4795cd757a7c9b08
+direct_dependencies:
+- espressif/arduino-foc
+- espressif/button
+- espressif/cmake_utilities
+- espressif/esp_lcd_gc9a01
+- espressif/esp_lvgl_port
+- espressif/esp_simplefoc
+- espressif/iqmath
+- espressif/tinyusb
+- idf
+- lvgl/lvgl
+manifest_hash: d9357c77435dd58ca00770126ca5e06fe1c213a36dbfa7091c0e8389c0df43cf
 target: esp32s3
-version: 1.0.0
+version: 2.0.0
