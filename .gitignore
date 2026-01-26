@@ -36,3 +36,6 @@ bin/dl_temp/
 bin/logs/
 bin/bin_tmp/
 **/*.log
+
+# PC simulator
+pc_sim/build/
