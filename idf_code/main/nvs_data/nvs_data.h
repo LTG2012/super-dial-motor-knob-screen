@@ -1,24 +1,17 @@
 #pragma once
 
 #include <stdint.h>
-#ifdef LV_SIMULATOR
-typedef struct {
-    const char *date;
-} esp_app_desc_t;
-#define ESP_APP_DESC_T_DEFINED 1
-#else
 #include "nvs_flash.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_check.h"
 #include "time.h"
 #include "esp_mac.h"
 #include "esp_app_desc.h"
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 #define SET_NVS_LIGHT "light"
 #define SET_NVS_LOCK "lock"
 #define SET_NVS_SLEEP "sleep"

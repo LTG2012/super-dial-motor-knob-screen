@@ -7,9 +7,7 @@
 #include "tinyusb.h"
 #include "class/hid/hid_device.h"
 #include "../ui/ui.h"
-#if !defined(LV_SIMULATOR)
 #include "esp_hidd_prf_api.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {

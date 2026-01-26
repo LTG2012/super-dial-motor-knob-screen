@@ -1,17 +1,5 @@
 #ifndef __WIFI_CONFIG_H__
 #define __WIFI_CONFIG_H__
-
-#ifdef LV_SIMULATOR
-#include <stdint.h>
-
-void wifi_init_softap(void);
-void wifi_station_task(void *pvParameters);
-void wifi_init_sta();
-void wifi_init(uint8_t mode);
-void get_wifi_current_status(char *src);
-void wifi_stop(void);
-
-#else
 #include <sys/param.h>
 
 #include <string.h>
@@ -47,6 +35,4 @@ void wifi_init_sta();
 void wifi_init(uint8_t mode);
 void get_wifi_current_status(char *src);
 void wifi_stop(void);
-#endif
-
 #endif

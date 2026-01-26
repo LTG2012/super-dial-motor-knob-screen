@@ -1,21 +1,5 @@
 #pragma once
 
-#ifdef LV_SIMULATOR
-#include <stdint.h>
-
-#define SET_SCREEN_LOCK_TIME_SRC "30s\n1min\n3min\n5min\n10min\n15min\nnever"
-#define SET_SYSTEM_SLEEP_TIME_SRC "1min\n3min\n5min\n10min\n15min\n30min\nnever"
-
-void adc_read_init();
-void power_gpio_init(void);
-void power_on(void);
-void power_off(void);
-void bat_power_get(void);
-uint8_t bat_val_get();
-uint32_t bat_adc_get();
-void set_new_lock_time(uint8_t val);
-void set_new_sleep_time(uint8_t val);
-#else
 #include <string.h>
 #include <stdio.h>
 #include "sdkconfig.h"
@@ -72,4 +56,3 @@ uint8_t bat_val_get();
 uint32_t bat_adc_get();
 void set_new_lock_time(uint8_t val);
 void set_new_sleep_time(uint8_t val);
-#endif
