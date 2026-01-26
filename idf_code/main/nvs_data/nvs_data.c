@@ -4,7 +4,7 @@ nvs_handle_t nvs_data_handle;
 typedef union
 {
     float f;
-    unsigned int d;
+    uint32_t d;
 }FTOD;
 SYS_CONFIG sys_config;
 void sys_data_init()
@@ -123,6 +123,7 @@ float nvs_get_float_data(const char* key_name)
     } 
     else
     {
+        da.d = 0;
         ret = nvs_get_u32(nvs_data_handle, key_name, &da.d);
         if(ret!=ESP_OK) ESP_LOGE(TAG, "%s get Error",key_name);
     }

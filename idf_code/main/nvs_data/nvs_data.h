@@ -1,6 +1,11 @@
 #pragma once
 
+#include <stdint.h>
 #include "nvs_flash.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_check.h"
@@ -29,7 +34,7 @@ typedef struct
     uint8_t hid_csm_index;
     char mac[6];
     float foc_angle;
-    esp_app_desc_t *app_desc;
+    const esp_app_desc_t *app_desc;
 }SYS_CONFIG;
 extern SYS_CONFIG sys_config;
 void nvs_data_init();
@@ -37,3 +42,7 @@ void nvs_set_u8_data(const char* key_name,uint8_t value);
 uint8_t nvs_get_u8_data(const char* key_name); 
 void nvs_set_float_data(const char* key_name,float value);
 float nvs_get_float_data(const char* key_name);
+
+#ifdef __cplusplus
+}
+#endif

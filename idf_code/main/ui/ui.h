@@ -6,10 +6,6 @@
 #ifndef _DIAL_UI_H
 #define _DIAL_UI_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "lvgl.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -25,6 +21,10 @@ extern "C" {
 #include "../nvs_data/nvs_data.h"
 #include "../display/display.h"
 #include "../wifi/wifi_config.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #define DIAL_STA_NUM 10
 enum {
     UI_NULL,

@@ -259,7 +259,7 @@ void ble_hid_surfacedial_report(uint8_t report_id, uint8_t keycode)
     }
     if(keycode == DIAL_L)
     {
-      dial_step = -(DIAL_UNIT)<<1;
+      dial_step = -(DIAL_UNIT << 1);
       report[0] = dial_step&0xFF;
       report[1] = dial_step>>8;
     }
@@ -278,7 +278,7 @@ void ble_hid_mouse_report(uint8_t report_id,
         .pan     = horizontal
     };
     hid_dev_send_report(hidd_le_env.gatt_if, hid_conn_id,
-                        report_id, HID_REPORT_TYPE_INPUT, sizeof(report), &report);
+                        report_id, HID_REPORT_TYPE_INPUT, sizeof(report), (uint8_t *)&report);
 }
 void ble_hid_keyboard_report(uint8_t report_id, uint8_t modifier, uint8_t keycode[6])
 {
@@ -295,7 +295,7 @@ void ble_hid_keyboard_report(uint8_t report_id, uint8_t modifier, uint8_t keycod
     tu_memclr(report.keycode, 6);
   }
   hid_dev_send_report(hidd_le_env.gatt_if, hid_conn_id,
-                        report_id, HID_REPORT_TYPE_INPUT, sizeof(report), &report);
+                        report_id, HID_REPORT_TYPE_INPUT, sizeof(report), (uint8_t *)&report);
 }
 void ble_hid_media_report(uint8_t report_id,uint8_t key0,uint8_t key1)
 {
