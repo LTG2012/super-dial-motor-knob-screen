@@ -1,5 +1,13 @@
 #pragma once
 
+#ifdef LV_SIMULATOR
+#include <stdint.h>
+
+void lvgl_display_init(void);
+void display_init(void);
+void set_screen_light(uint8_t duty);
+void set_screen_rotation(uint8_t val);
+#else
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_check.h"
@@ -58,3 +66,4 @@ void set_screen_light(uint8_t duty);
  *
  */
 void set_screen_rotation(uint8_t val);
+#endif

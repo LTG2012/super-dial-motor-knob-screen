@@ -3,8 +3,24 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#ifdef LV_SIMULATOR
+#include <stdint.h>
+#ifndef PI
+#define PI 3.14159265358979f
+#endif
+typedef struct {
+    int32_t    num_positions;
+    int32_t    position;
+    float      position_width_radians;
+    float      detent_strength_unit;
+    float      endstop_strength_unit;
+    float      snap_point;
+    const char *descriptor;
+} foc_knob_param_t;
+#else
 #include "foc_knob.h"
 #include "foc_knob_default.h"
+#endif
 #define SWITCH_BUTTON GPIO_NUM_5
 #define PHASE_U_GPIO 15
 #define PHASE_V_GPIO 16
