@@ -35,6 +35,8 @@ target_include_directories(superdial_ui_sim PRIVATE
     ${LVGL_DIR}/src
     ${IDF_MAIN_DIR}
     ${IDF_MAIN_DIR}/nvs_data
+    ${IDF_MAIN_DIR}/dial
+    ${IDF_MAIN_DIR}/display
     ${UI_DIR}
     ${UI_DIR}/screens
     ${UI_DIR}/images
