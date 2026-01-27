@@ -112,6 +112,26 @@ static void lv_port_init(void)
     lv_disp_drv_register(&disp_drv);
 }
 
+static void dial_event_dispatch(uint8_t state)
+{
+    switch (ui_state.index) {
+        case UI_MENU_INTERFACE:
+            ui_Screen1_dial_event(state);
+            break;
+        case UI_HID_INTERFACE:
+            ui_Screen2_hid_event(state);
+            break;
+        case UI_SETTING_INTERFACE:
+            ui_Screen_Setting_event(state);
+            break;
+        case UI_HID_CUSTOM_INTERFACE:
+            ui_Screen3_Custom_hid_event(state);
+            break;
+        default:
+            break;
+    }
+}
+
 int main(int argc, char **argv)
 {
     (void)argc;
@@ -124,12 +144,54 @@ int main(int argc, char **argv)
 
     uint32_t last_tick = SDL_GetTicks();
     bool running = true;
+    bool dial_pressed = false;
 
     while(running) {
         SDL_Event event;
         while(SDL_PollEvent(&event)) {
             if(event.type == SDL_QUIT) {
                 running = false;
+            } else if(event.type == SDL_KEYDOWN) {
+                switch(event.key.keysym.sym) {
+                    case SDLK_LEFT:
+                        dial_event_dispatch(dial_pressed ? DIAL_STA_P_L : DIAL_STA_L);
+                        break;
+                    case SDLK_RIGHT:
+                        dial_event_dispatch(dial_pressed ? DIAL_STA_P_R : DIAL_STA_R);
+                        break;
+                    case SDLK_RETURN:
+                    case SDLK_SPACE:
+                        if(!dial_pressed) {
+                            dial_pressed = true;
+                            dial_event_dispatch(DIAL_STA_PRESS);
+                        }
+                        break;
+                    case SDLK_ESCAPE:
+                        running = false;
+                        break;
+                    case SDLK_BACKSPACE:
+                    case SDLK_b:
+                        if(ui_state.index != UI_MENU_INTERFACE) {
+                            _ui_screen_change(&ui_Screen1, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, &ui_Screen1_screen_init);
+                        }
+                        dial_event_dispatch(DIAL_STA_DOUBLE_CLICK);
+                        break;
+                    default:
+                        break;
+                }
+            } else if(event.type == SDL_KEYUP) {
+                switch(event.key.keysym.sym) {
+                    case SDLK_RETURN:
+                    case SDLK_SPACE:
+                        if(dial_pressed) {
+                            dial_pressed = false;
+                            dial_event_dispatch(DIAL_STA_RELEASE);
+                            dial_event_dispatch(DIAL_STA_CLICK);
+                        }
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 

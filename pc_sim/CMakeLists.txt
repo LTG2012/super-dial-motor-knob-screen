@@ -37,6 +37,9 @@ target_include_directories(superdial_ui_sim PRIVATE
     ${IDF_MAIN_DIR}/nvs_data
     ${IDF_MAIN_DIR}/dial
     ${IDF_MAIN_DIR}/display
+    ${IDF_MAIN_DIR}/wifi
+    ${IDF_MAIN_DIR}/dial_power
+    ${IDF_MAIN_DIR}/usb_device
     ${UI_DIR}
     ${UI_DIR}/screens
     ${UI_DIR}/images

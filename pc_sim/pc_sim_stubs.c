@@ -111,3 +111,12 @@ void set_new_sleep_time(uint8_t val)
 
 void usb_device_init(void) {}
 void usb_device_uninstall(void) {}
+
+void set_motor_zero_electric_angle(void) {}
+
+uint16_t get_fknob_shaft_angle(void)
+{
+    return 0;
+}
+
+void esp_restart(void) {}
