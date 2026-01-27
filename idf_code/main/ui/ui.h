@@ -8,6 +8,11 @@
 
 #include "lvgl.h"
 #include "esp_log.h"
+#ifdef LV_SIMULATOR
+#include <stdbool.h>
+#include "esp_heap_caps.h"
+extern bool sec_conn;
+#endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"

@@ -147,7 +147,7 @@ static void ui_icon_info_init()
     ui_icon_hid[id].param_list = hid_foc_knob_param_lst[id];
 
     ui_icon_hid[id].icon.img_src = &ui_img_copy_png;
-    ui_icon_hid[id].icon.name = "快捷键";
+    ui_icon_hid[id].icon.name = "Hotkeys";
     ui_icon_hid[id].icon.left_info = "Ctrl+C";
     ui_icon_hid[id].icon.mid_info = "Ctrl+Z";
     ui_icon_hid[id].icon.right_info = "Ctrl+V";
@@ -180,7 +180,7 @@ static void ui_icon_info_init()
     ui_icon_hid[id].param_list = hid_foc_knob_param_lst[id];
 
     ui_icon_hid[id].icon.img_src = &ui_img_key_left_right_png;
-    ui_icon_hid[id].icon.name = "方向键";
+    ui_icon_hid[id].icon.name = "Arrows";
     ui_icon_hid[id].icon.left_info = "Left";
     ui_icon_hid[id].icon.mid_info = "Space";
     ui_icon_hid[id].icon.right_info = "Right";

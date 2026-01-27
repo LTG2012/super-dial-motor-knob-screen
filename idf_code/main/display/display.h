@@ -2,6 +2,7 @@
 
 #ifdef LV_SIMULATOR
 #include <stdint.h>
+#include "esp_lvgl_port.h"
 
 void lvgl_display_init(void);
 void display_init(void);

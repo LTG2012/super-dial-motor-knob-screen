@@ -8,6 +8,7 @@
 #include "usb_device.h"
 
 QueueHandle_t HID_Queue = NULL;
+bool sec_conn = false;
 
 static const esp_app_desc_t s_sim_app_desc = {
     .date = "sim"
@@ -107,3 +108,6 @@ void set_new_sleep_time(uint8_t val)
 {
     (void)val;
 }
+
+void usb_device_init(void) {}
+void usb_device_uninstall(void) {}

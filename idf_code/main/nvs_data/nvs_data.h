@@ -2,10 +2,12 @@
 
 #include <stdint.h>
 #ifdef LV_SIMULATOR
+#ifndef ESP_APP_DESC_T_DEFINED
+#define ESP_APP_DESC_T_DEFINED 1
 typedef struct {
     const char *date;
 } esp_app_desc_t;
-#define ESP_APP_DESC_T_DEFINED 1
+#endif
 #else
 #include "nvs_flash.h"
 #include "esp_err.h"
