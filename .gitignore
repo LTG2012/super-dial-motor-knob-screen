@@ -20,6 +20,22 @@ idf_code/managed_components/
 idf_code/sdkconfig.old
 idf_code/sdkconfig.*.old
 
+# CMake / PC sim build outputs
+pc_sim/build/
+pc_sim/build-*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile
+**/*.ninja
+**/*.ninja_deps
+**/*.ninja_log
+**/Testing/
+**/*.vcxproj
+**/*.vcxproj.filters
+**/*.vcxproj.user
+**/*.sln
+
 # Arduino/PlatformIO
 arduino_code/**/build/
 arduino_code/**/build-*/
