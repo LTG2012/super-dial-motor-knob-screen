@@ -21,6 +21,21 @@ extern "C" {
 #define NVS_SYS_HID_INDEX "sys_hid_index"
 #define NVS_CSM_HID_INDEX "csm_hid_index"   //custom hid index
 #define NVS_FOC_ELECTRIC_ANGLE "foc_angle"
+#define NVS_CUSTOM_HID_DATA "csm_hid_data"
+
+#define CUSTOM_HID_SLOT_NUM 8
+typedef struct {
+    uint8_t enabled;
+    char name[16]; 
+    uint8_t hid_type; // 0: Keyboard, 1: Mouse, 2: Surface Dial
+    uint8_t cw[6];    // keycode for clockwise
+    uint8_t ccw[6];   // keycode for counter-clockwise
+    uint8_t click[6]; // keycode for click
+} HID_CONFIG_ITEM;
+
+typedef struct {
+    HID_CONFIG_ITEM items[CUSTOM_HID_SLOT_NUM];
+} CUSTOM_HID_CONFIG;
 
 typedef struct 
 {
@@ -35,13 +50,17 @@ typedef struct
     char mac[6];
     float foc_angle;
     const esp_app_desc_t *app_desc;
+    CUSTOM_HID_CONFIG custom_hid;
 }SYS_CONFIG;
 extern SYS_CONFIG sys_config;
 void nvs_data_init();
 void nvs_set_u8_data(const char* key_name,uint8_t value);
 uint8_t nvs_get_u8_data(const char* key_name); 
 void nvs_set_float_data(const char* key_name,float value);
+void nvs_set_float_data(const char* key_name,float value);
 float nvs_get_float_data(const char* key_name);
+void nvs_set_blob_data(const char* key_name, void* value, size_t length);
+size_t nvs_get_blob_data(const char* key_name, void* value, size_t length);
 
 #ifdef __cplusplus
 }

@@ -2,6 +2,9 @@
 #include "web_html.h"
 #include "../sntp_time/sntp_time.h"
 #include "../spiffs_init/spiffs_init.h"
+#include "cJSON.h"
+#include "nvs_data/nvs_data.h"
+#include "../usb_device/usb_device.h"
 static bool g_wifi_sta_inited = false;
 static bool g_wifi_ap_inited = false;
 static bool g_wifi_sta_ap_state = false;
@@ -141,33 +144,25 @@ static void sta_event_handler(void *arg, esp_event_base_t event_base,
 }
 void wifi_init_sta()
 {
-    // s_wifi_event_group = xEventGroupCreate();
-
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-    // ESP_ERROR_CHECK(esp_netif_init());
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = "",
-            .password = "12345678",
-            /* Setting a password implies station will connect to all security modes including WEP/WPA.
-             * However these modes are deprecated and not advisable to be used. Incase your Access point
-             * doesn't support WPA2, these mode can be enabled by commenting below line */
-            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-        },
-    };
-    // wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-
-    // printf("%s\r\n",wifi_config.sta.ssid);
-    // printf("%s\r\n",wifi_config.sta.password);
-    if (strlen((char *)wifi_config.sta.ssid) == 0)
+    wifi_config_t wifi_config = {0};
+    // 尝试从NVS获取WiFi配置
+    esp_err_t err = esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_config);
+    
+    // 如果获取失败或者SSID为空，则使用默认值或返回
+    if (err != ESP_OK || strlen((char *)wifi_config.sta.ssid) == 0)
     {
-        ESP_LOGI(TAG, "No wifi name");
-        sprintf(wifi_current_src, " wifi name is null");
+        ESP_LOGI(TAG, "No saved wifi config found");
+        sprintf(wifi_current_src, "No WiFi Config");
+        
+        // 确保初始化WiFi驱动，即使没有配置，以便后续可以设置
+        // 但如果不连接，在这里返回即可，等待用户通过网页配置
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_start());
         return;
     }
-    sprintf(wifi_current_src, "connect :%s", wifi_config.sta.ssid);
+    
+    ESP_LOGI(TAG, "Found saved wifi config: %s", wifi_config.sta.ssid);
+    sprintf(wifi_current_src, "Connect: %s", wifi_config.sta.ssid);
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
@@ -176,36 +171,6 @@ void wifi_init_sta()
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     esp_wifi_connect();
-
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
-    // EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-    //                                        WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-    //                                        pdFALSE,
-    //                                        pdFALSE,
-    //                                        portMAX_DELAY);
-
-    // /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-    //  * happened. */
-    // if (bits & WIFI_CONNECTED_BIT)
-    // {
-    //     ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-    //              wifi_config.sta.ssid, wifi_config.sta.password);
-    // }
-    // else if (bits & WIFI_FAIL_BIT)
-    // {
-    //     ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-    //              wifi_config.sta.ssid, wifi_config.sta.password);
-    // }
-    // else
-    // {
-    //     ESP_LOGE(TAG, "UNEXPECTED Eprotocol_examples_common.h:ENT");
-    // }
-
-    // /* The event will not be processed after unregister */
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
-    // vEventGroupDelete(s_wifi_event_group);
 }
 static void wifi_deinit() // 关闭wifi热点
 {
@@ -288,17 +253,103 @@ static esp_err_t api_config_get_handler(httpd_req_t *req)
     size_t total = 0, used = 0;
     spiffs_get_info(&total, &used);
     
-    char response[512];
-    snprintf(response, sizeof(response),
-        "{\"device_id\":\"%s\",\"fw_version\":\"%s\",\"storage\":\"%d/%d KB\",\"hid_slots\":[]}",
-        sys_config.mac,
-        sys_config.app_desc ? sys_config.app_desc->version : "unknown",
-        (int)(used/1024), (int)(total/1024)
-    );
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "device_id", sys_config.mac);
+    if(sys_config.app_desc) {
+        cJSON_AddStringToObject(root, "fw_version", sys_config.app_desc->version);
+    } else {
+        cJSON_AddStringToObject(root, "fw_version", "unknown");
+    }
     
+    char storage_str[32];
+    snprintf(storage_str, sizeof(storage_str), "%d/%d KB", (int)(used/1024), (int)(total/1024));
+    cJSON_AddStringToObject(root, "storage", storage_str);
+    
+    cJSON *slots = cJSON_CreateArray();
+    for(int i=0; i<CUSTOM_HID_SLOT_NUM; i++) {
+        cJSON *item = cJSON_CreateObject();
+        HID_CONFIG_ITEM *cfg = &sys_config.custom_hid.items[i];
+        
+        cJSON_AddBoolToObject(item, "enabled", cfg->enabled ? true : false);
+        cJSON_AddStringToObject(item, "name", cfg->name);
+        cJSON_AddNumberToObject(item, "hid_type", cfg->hid_type);
+        
+        // 转换按键码为字符串 (简化处理，目前只显示占位符或需要反解析)
+        // 这里的逻辑需要根据web_html.h的约定，Web端发送的是字符串，但NVS存的是u8[6]
+        // 暂时简单处理：如果全是0，返回空字符串
+        // TODO: 实现 keycode -> string 的转换，或者直接存储字符串
+        // 为了兼容当前演示，先返回空字符串，等待后续完善映射逻辑
+        cJSON_AddStringToObject(item, "cw_key", ""); 
+        cJSON_AddStringToObject(item, "ccw_key", "");
+        cJSON_AddStringToObject(item, "click_key", "");
+        
+        cJSON_AddItemToArray(slots, item);
+    }
+    cJSON_AddItemToObject(root, "hid_slots", slots);
+    
+    const char *json_str = cJSON_PrintUnformatted(root);
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send(req, json_str, HTTPD_RESP_USE_STRLEN);
+    
+    free((void*)json_str);
+    cJSON_Delete(root);
     return ESP_OK;
+}
+
+// 辅助函数：解析按键字符串
+// 格式: "CTRL+ALT+A", "SHIFT+F1", "ENTER" 等
+static void parse_key_string(const char *str, uint8_t *cw)
+{
+    memset(cw, 0, 6);
+    if (!str || strlen(str) == 0) return;
+    
+    char temp[64];
+    strncpy(temp, str, sizeof(temp)-1);
+    temp[sizeof(temp)-1] = 0;
+    
+    uint8_t modifiers = 0;
+    uint8_t keycode = 0;
+    
+    char *token = strtok(temp, "+");
+    while (token != NULL) {
+        // 转换大写
+        for(int i=0; token[i]; i++) {
+            if(token[i] >= 'a' && token[i] <= 'z') token[i] -= 32;
+        }
+        
+        // Modifiers
+        if (strcmp(token, "CTRL") == 0 || strcmp(token, "CONTROL") == 0) modifiers |= KEYBOARD_MODIFIER_LEFTCTRL;
+        else if (strcmp(token, "SHIFT") == 0) modifiers |= KEYBOARD_MODIFIER_LEFTSHIFT;
+        else if (strcmp(token, "ALT") == 0) modifiers |= KEYBOARD_MODIFIER_LEFTALT;
+        else if (strcmp(token, "GUI") == 0 || strcmp(token, "WIN") == 0 || strcmp(token, "CMD") == 0) modifiers |= KEYBOARD_MODIFIER_LEFTGUI;
+        else {
+            // Keycode mapping (Simple implementation for common keys)
+            if (strlen(token) == 1) {
+                char c = token[0];
+                if (c >= 'A' && c <= 'Z') keycode = HID_KEY_A + (c - 'A');
+                else if (c >= '1' && c <= '9') keycode = HID_KEY_1 + (c - '1');
+                else if (c == '0') keycode = HID_KEY_0;
+            } else {
+                if (strcmp(token, "ENTER") == 0) keycode = HID_KEY_ENTER;
+                else if (strcmp(token, "ESC") == 0 || strcmp(token, "ESCAPE") == 0) keycode = HID_KEY_ESCAPE;
+                else if (strcmp(token, "BACKSPACE") == 0) keycode = HID_KEY_BACKSPACE;
+                else if (strcmp(token, "TAB") == 0) keycode = HID_KEY_TAB;
+                else if (strcmp(token, "SPACE") == 0) keycode = HID_KEY_SPACE;
+                else if (strcmp(token, "LEFT") == 0) keycode = HID_KEY_ARROW_LEFT;
+                else if (strcmp(token, "RIGHT") == 0) keycode = HID_KEY_ARROW_RIGHT;
+                else if (strcmp(token, "UP") == 0) keycode = HID_KEY_ARROW_UP;
+                else if (strcmp(token, "DOWN") == 0) keycode = HID_KEY_ARROW_DOWN;
+                else if (strncmp(token, "F", 1) == 0 && strlen(token) > 1) {
+                    int f_num = atoi(token + 1);
+                    if (f_num >= 1 && f_num <= 12) keycode = HID_KEY_F1 + (f_num - 1);
+                }
+            }
+        }
+        token = strtok(NULL, "+");
+    }
+    
+    cw[0] = modifiers;
+    cw[1] = keycode;
 }
 
 // API: 保存配置
@@ -306,16 +357,65 @@ static esp_err_t api_config_post_handler(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "API: Save config");
     
-    char buf[1024];
+    char buf[2048]; // 增加缓冲区以容纳完整的JSON
     int received = httpd_req_recv(req, buf, sizeof(buf) - 1);
     if (received <= 0) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No data received");
         return ESP_FAIL;
     }
     buf[received] = '\0';
-    ESP_LOGI(TAG, "Received config: %s", buf);
     
-    // TODO: 解析JSON并保存到NVS
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+    
+    cJSON *slots = cJSON_GetObjectItem(root, "hid_slots");
+    if (cJSON_IsArray(slots)) {
+        int count = cJSON_GetArraySize(slots);
+        if (count > CUSTOM_HID_SLOT_NUM) count = CUSTOM_HID_SLOT_NUM;
+        
+        for (int i = 0; i < count; i++) {
+            cJSON *item = cJSON_GetArrayItem(slots, i);
+            HID_CONFIG_ITEM *cfg = &sys_config.custom_hid.items[i];
+            
+            cJSON *enabled = cJSON_GetObjectItem(item, "enabled");
+            if(enabled) cfg->enabled = cJSON_IsTrue(enabled) ? 1 : 0;
+            
+            cJSON *name = cJSON_GetObjectItem(item, "name");
+            if(cJSON_IsString(name)) {
+                strncpy(cfg->name, name->valuestring, sizeof(cfg->name)-1);
+            }
+            
+            cJSON *hid_type = cJSON_GetObjectItem(item, "hid_type");
+            if(cJSON_IsNumber(hid_type)) {
+                cfg->hid_type = (uint8_t)hid_type->valueint;
+            }
+            
+            
+            // 解析 key strings
+            cJSON *cw_key = cJSON_GetObjectItem(item, "cw_key");
+            if (cJSON_IsString(cw_key)) {
+                parse_key_string(cw_key->valuestring, cfg->cw);
+            }
+            
+            cJSON *ccw_key = cJSON_GetObjectItem(item, "ccw_key");
+            if (cJSON_IsString(ccw_key)) {
+                parse_key_string(ccw_key->valuestring, cfg->ccw);
+            }
+            
+            cJSON *click_key = cJSON_GetObjectItem(item, "click_key");
+            if (cJSON_IsString(click_key)) {
+                parse_key_string(click_key->valuestring, cfg->click);
+            }
+        }
+        
+        // 保存到NVS
+        nvs_set_blob_data(NVS_CUSTOM_HID_DATA, &sys_config.custom_hid, sizeof(CUSTOM_HID_CONFIG));
+    }
+    
+    cJSON_Delete(root);
     
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, "{\"success\":true,\"message\":\"配置已保存\"}", HTTPD_RESP_USE_STRLEN);
@@ -350,7 +450,7 @@ static esp_err_t api_upload_post_handler(httpd_req_t *req)
     }
     
     // 打开文件准备写入
-    FILE *f = fopen("/spiffs/bg_custom.png", "wb");
+    FILE *f = fopen("/spiffs/bg_custom.bin", "wb");
     if (!f) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to create file");
         return ESP_FAIL;
@@ -386,11 +486,44 @@ static esp_err_t api_wifi_post_handler(httpd_req_t *req)
     }
     buf[received] = '\0';
     
-    // TODO: 解析JSON并保存WiFi配置到NVS
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
     
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"success\":true,\"message\":\"WiFi配置已保存，重启后生效\"}", HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
+    cJSON *ssid_item = cJSON_GetObjectItem(root, "ssid");
+    cJSON *pass_item = cJSON_GetObjectItem(root, "password");
+    
+    if (cJSON_IsString(ssid_item) && (cJSON_IsString(pass_item) || cJSON_IsNull(pass_item))) {
+        char *ssid = ssid_item->valuestring;
+        char *pass = cJSON_IsString(pass_item) ? pass_item->valuestring : "";
+        
+        ESP_LOGI(TAG, "Setting WiFi: SSID=%s", ssid);
+        
+        wifi_config_t wifi_config = {0};
+        // 先获取当前配置（主要为了其它字段，虽然这里重新设置STA）
+        esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_config);
+        
+        strncpy((char*)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
+        strncpy((char*)wifi_config.sta.password, pass, sizeof(wifi_config.sta.password));
+        wifi_config.sta.threshold.authmode = (strlen(pass) == 0) ? WIFI_AUTH_OPEN : WIFI_AUTH_WPA2_PSK;
+        
+        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+        
+        // 立即尝试连接
+        ESP_ERROR_CHECK(esp_wifi_disconnect());
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_send(req, "{\"success\":true,\"message\":\"WiFi配置已保存，正在尝试连接...\"}", HTTPD_RESP_USE_STRLEN);
+    } else {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing ssid or password");
+    }
+    
+    cJSON_Delete(root);
+    return ESP_OK;    
+
 }
 
 static const httpd_uri_t root = {

@@ -47,21 +47,51 @@ static void ui_icon_info_init()
     ui_icon_hid = heap_caps_malloc(ICON_CNT*sizeof(UI_HID_INFO),MALLOC_CAP_SPIRAM);
     memset(ui_icon_hid, 0x00, ICON_CNT*sizeof(UI_HID_INFO));//全部清零
 
+    // 从NVS加载配置
+    uint8_t csm_idx = sys_config.hid_csm_index;
+    if (csm_idx >= CUSTOM_HID_SLOT_NUM) csm_idx = 0;
+    
+    HID_CONFIG_ITEM *item = &sys_config.custom_hid.items[csm_idx];
+    
     id = 0;
-    ui_icon_hid[id].icon_id = id;
-    ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_MOUSE;
-    ui_icon_hid[id].dial_sta[DIAL_STA_RELEASE].hid_data[0] = 0;
-    ui_icon_hid[id].dial_sta[DIAL_STA_PRESS].hid_data[0] = MOUSE_BUTTON_LEFT;
-    ui_icon_hid[id].dial_sta[DIAL_STA_CLICK].hid_data[0] = MOUSE_BUTTON_LEFT;
-    ui_icon_hid[id].dial_sta[DIAL_STA_R].hid_data[1] = 10;
-    ui_icon_hid[id].dial_sta[DIAL_STA_L].hid_data[1] = -10;
+    // 映射HID类型
+    switch(item->hid_type) {
+        case 0: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_KEYBOARD; break;
+        case 1: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_MOUSE; break;
+        case 2: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_DIAL; break; // Surface Dial
+        default: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_KEYBOARD; break;
+    }
+    
+    // 初始化按键数据
+    // NVS存储: cw[6], ccw[6], click[6]
+    // UI需要: dial_sta[DIAL_STA_release/press/click/R/L].hid_data[6]
+    
+    // 复制按键定义
+    memcpy(ui_icon_hid[id].dial_sta[DIAL_STA_R].hid_data, item->cw, 6);
+    memcpy(ui_icon_hid[id].dial_sta[DIAL_STA_L].hid_data, item->ccw, 6);
+    memcpy(ui_icon_hid[id].dial_sta[DIAL_STA_CLICK].hid_data, item->click, 6);
+    
+    // 对于按下/释放状态，通常从点击键值推导或保持默认
+    // 这里简单处理：Click状态通常是一次性的，但UI逻辑中有Press/Release/Click
+    // 假设Click对应按键的按下+释放。
+    // 如果是键盘，Click通常意味着发送一次按键报告然后释放。
+    
+    // 配置旋钮参数
+    ui_icon_hid[id].param_list = hid_foc_knob_param_lst[0]; // 使用默认力反馈参数
 
-    ui_icon_hid[id].param_list = hid_foc_knob_param_lst[id];
-
-    ui_icon_hid[id].icon.img_src = &ui_img_dial_png;
-    ui_icon_hid[id].icon.name = "旋钮";
+    ui_icon_hid[id].icon.img_src = &ui_img_dial_png; // 暂时固定使用旋钮图标
+    
+    // 设置名称
+    static char name_buf[32]; // 使用静态缓冲区确保指针有效
+    if (strlen(item->name) > 0) {
+        strncpy(name_buf, item->name, sizeof(name_buf)-1);
+    } else {
+        strcpy(name_buf, "未定义");
+    }
+    ui_icon_hid[id].icon.name = name_buf;
+    
     ui_icon_hid[id].icon.left_info = "-";
-    ui_icon_hid[id].icon.mid_info = "Surface Dial";
+    ui_icon_hid[id].icon.mid_info = "自定义";
     ui_icon_hid[id].icon.right_info = "+";
 }
 static void hid_send(uint8_t state)

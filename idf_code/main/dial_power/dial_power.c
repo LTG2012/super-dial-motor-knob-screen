@@ -4,6 +4,12 @@ static TaskHandle_t s_task_handle;
 static const char *TAG = "POWER";
 static uint16_t screen_lock_time[] = {30,60,180,300,600,900,0};
 static uint16_t system_sleep_time[] = {60,180,300,600,900,1800,0};
+
+#if CONFIG_IDF_TARGET_ESP32
+static adc_channel_t channel[2] = {ADC_CHANNEL_6, ADC_CHANNEL_7};
+#else
+static adc_channel_t adc_channel[1] = { ADC_CHANNEL_3};   //GPIO4
+#endif
 static uint16_t lock_time = 0;
 static uint16_t sleep_time = 0;
 uint32_t adc_val;

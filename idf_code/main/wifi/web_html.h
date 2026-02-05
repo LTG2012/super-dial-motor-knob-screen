@@ -291,13 +291,64 @@ static const char WEB_CONFIG_HTML[] = R"rawliteral(
 
         function uploadImage(input) {
             if (!input.files[0]) return;
-            const formData = new FormData();
-            formData.append('image', input.files[0]);
+            const file = input.files[0];
+            const reader = new FileReader();
             
-            fetch('/api/upload', {method: 'POST', body: formData})
-                .then(r => r.json())
-                .then(data => showStatus('uploadStatus', data.success, data.message))
-                .catch(e => showStatus('uploadStatus', false, '上传失败: ' + e));
+            showStatus('uploadStatus', true, '正在转换格式...');
+            
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // 创建画布缩放图片
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 240;
+                    canvas.height = 240;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 保持比例填充或拉伸？这里选择拉伸填满，或者可以做裁剪
+                    // 简单起见，拉伸填满
+                    ctx.drawImage(img, 0, 0, 240, 240);
+                    
+                    const imgData = ctx.getImageData(0, 0, 240, 240);
+                    const pixels = imgData.data; // RGBA
+                    const buffer = new Uint8Array(240 * 240 * 2); // RGB565 buffer
+                    
+                    let dataIndex = 0;
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        const r = pixels[i];
+                        const g = pixels[i + 1];
+                        const b = pixels[i + 2];
+                        
+                        // RGB565 conversion: R5 G6 B5
+                        const rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+                        
+                        // Swap bytes for little endian (ESP32 LVGL default often implies converting to LE for 16bit interface)
+                        // But LVGL internal formats usually match the display controller or simple LE.
+                        // Assuming standard little endian storage: low byte first
+                        buffer[dataIndex++] = rgb565 & 0xFF;
+                        buffer[dataIndex++] = (rgb565 >> 8) & 0xFF;
+                        
+                        // 如果需要 Big Endian，交换这两行
+                    }
+                    
+                    // 上传转换后的buffer
+                    const blob = new Blob([buffer], { type: 'application/octet-stream' });
+                    
+                    fetch('/api/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/octet-stream',
+                            'X-File-Name': 'bg_custom.bin'
+                        },
+                        body: blob
+                    })
+                    .then(r => r.json())
+                    .then(data => showStatus('uploadStatus', data.success, data.message))
+                    .catch(e => showStatus('uploadStatus', false, '上传失败: ' + e));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
         function saveWifiConfig() {

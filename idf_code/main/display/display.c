@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include "esp_heap_caps.h"
 #include "display.h"
 
 static const char *TAG = "DISPLAY";
@@ -162,6 +164,51 @@ void display_init(void)
         set_screen_light(val);
     else
         set_screen_light(50);
+
+}
+
+static void load_custom_bg(void)
+{
+    FILE *f = fopen("/spiffs/bg_custom.bin", "rb");
+    if (!f) {
+        ESP_LOGI(TAG, "No custom background found");
+        return;
+    }
+    
+    fseek(f, 0, SEEK_END);
+    size_t size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    
+    // Check size: 240 * 240 * 2 (RGB565) = 115200 bytes
+    // If size is different, it might be corrupted or different format
+    if (size != 240 * 240 * 2) {
+        ESP_LOGW(TAG, "Invalid custom background size: %d", size);
+        fclose(f);
+        return;
+    }
+    
+    uint8_t *data = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+    if (!data) {
+        ESP_LOGE(TAG, "Failed to allocate memory for background");
+        fclose(f);
+        return;
+    }
+    
+    fread(data, 1, size, f);
+    fclose(f);
+    
+    static lv_img_dsc_t bg_dsc;
+    bg_dsc.header.always_zero = 0;
+    bg_dsc.header.w = 240;
+    bg_dsc.header.h = 240;
+    bg_dsc.data_size = size;
+    bg_dsc.header.cf = LV_IMG_CF_TRUE_COLOR;
+    bg_dsc.data = data;
+    
+    if (ui_Screen1) { 
+         lv_obj_set_style_bg_img_src(ui_Screen1, &bg_dsc, LV_PART_MAIN | LV_STATE_DEFAULT);
+         ESP_LOGI(TAG, "Custom background loaded");
+    }
 }
 void lvgl_display_init(void)
 {
@@ -169,6 +216,7 @@ void lvgl_display_init(void)
     lvgl_port_lock(0);
 
     ui_init();
+    load_custom_bg();
     /* Task unlock */
     lvgl_port_unlock();
 }

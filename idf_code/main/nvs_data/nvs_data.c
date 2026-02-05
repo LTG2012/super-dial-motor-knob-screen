@@ -7,6 +7,7 @@ typedef union
     uint32_t d;
 }FTOD;
 SYS_CONFIG sys_config;
+
 void sys_data_init()
 {
     
@@ -26,6 +27,12 @@ void sys_data_init()
     sys_config.hid_sys_index = nvs_get_u8_data(NVS_SYS_HID_INDEX);
     sys_config.hid_csm_index = nvs_get_u8_data(NVS_CSM_HID_INDEX);
     sys_config.foc_angle = nvs_get_float_data(NVS_FOC_ELECTRIC_ANGLE);
+    
+    // 读取自定义HID配置，如果不存在或大小不匹配则清零
+    if (nvs_get_blob_data(NVS_CUSTOM_HID_DATA, &sys_config.custom_hid, sizeof(CUSTOM_HID_CONFIG)) != sizeof(CUSTOM_HID_CONFIG)) {
+        ESP_LOGW(TAG, "Custom HID config not found or invalid size, using defaults");
+        memset(&sys_config.custom_hid, 0, sizeof(CUSTOM_HID_CONFIG));
+    }
 }
 static void nvs_default_data_set()
 {
@@ -39,6 +46,11 @@ static void nvs_default_data_set()
     nvs_set_u8_data(NVS_SYS_HID_INDEX,0);
     nvs_set_u8_data(NVS_CSM_HID_INDEX,0);
     nvs_set_float_data(NVS_FOC_ELECTRIC_ANGLE,0);
+    
+    // 设置默认自定义HID配置 (全空)
+    CUSTOM_HID_CONFIG default_hid = {0};
+    nvs_set_blob_data(NVS_CUSTOM_HID_DATA, &default_hid, sizeof(CUSTOM_HID_CONFIG));
+    
     ESP_LOGI(TAG,"nvs_default_data_set");
 }
 void nvs_data_init()
@@ -129,4 +141,54 @@ float nvs_get_float_data(const char* key_name)
     }
     nvs_close(nvs_data_handle);
     return da.f;
+}
+
+void nvs_set_blob_data(const char* key_name, void* value, size_t length)
+{
+    esp_err_t ret;
+    ret = nvs_open("main", NVS_READWRITE, &nvs_data_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "opening NVS Error (%s)!\\n", esp_err_to_name(ret));
+    } else {
+        ret = nvs_set_blob(nvs_data_handle, key_name, value, length);
+        if(ret != ESP_OK) ESP_LOGE(TAG, "%s set blob Error", key_name);
+        nvs_commit(nvs_data_handle);
+    }
+    nvs_close(nvs_data_handle);
+}
+
+size_t nvs_get_blob_data(const char* key_name, void* value, size_t length)
+{
+    esp_err_t ret;
+    size_t required_size = 0;
+    ret = nvs_open("main", NVS_READWRITE, &nvs_data_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "opening NVS Error (%s)!\\n", esp_err_to_name(ret));
+        return 0;
+    }
+    
+    // 获取大小
+    ret = nvs_get_blob(nvs_data_handle, key_name, NULL, &required_size);
+    if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGE(TAG, "%s get blob size Error", key_name);
+        nvs_close(nvs_data_handle);
+        return 0;
+    }
+    
+    if (required_size == 0) {
+        nvs_close(nvs_data_handle);
+        return 0;
+    }
+    
+    if (length < required_size) {
+        ESP_LOGW(TAG, "%s blob truncated", key_name);
+        // 如果缓冲区太小，只读部分（虽然nvs_get_blob不支持partial read，但这里为了逻辑完整）
+        // 实测 NVS blob 必须一次读完
+    }
+    
+    ret = nvs_get_blob(nvs_data_handle, key_name, value, &required_size);
+    if(ret != ESP_OK) ESP_LOGE(TAG, "%s get blob Error", key_name);
+    
+    nvs_close(nvs_data_handle);
+    return required_size;
 }
