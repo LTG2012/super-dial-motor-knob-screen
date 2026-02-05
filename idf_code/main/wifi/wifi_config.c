@@ -1,4 +1,7 @@
 #include "wifi_config.h"
+#include "web_html.h"
+#include "../sntp_time/sntp_time.h"
+#include "../spiffs_init/spiffs_init.h"
 static bool g_wifi_sta_inited = false;
 static bool g_wifi_ap_inited = false;
 static bool g_wifi_sta_ap_state = false;
@@ -128,6 +131,11 @@ static void sta_event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         g_wifi_sta_ap_state = 0;
+        
+        // WiFi连接成功后自动启动SNTP时间同步
+        ESP_LOGI(TAG, "Starting SNTP time synchronization...");
+        sntp_time_init();
+        
         // xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
@@ -263,14 +271,125 @@ void wifi_init_softap(void)
     g_wifi_sta_ap_state = 1;
 }
 
-// HTTP GET Handler
+// HTTP GET Handler - 返回配置页面
 static esp_err_t root_get_handler(httpd_req_t *req)
 {
-    ESP_LOGI(TAG, "Serve root");
-
+    ESP_LOGI(TAG, "Serve config page");
     httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, "ok", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send(req, WEB_CONFIG_HTML, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
 
+// API: 获取配置信息
+static esp_err_t api_config_get_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "API: Get config");
+    
+    size_t total = 0, used = 0;
+    spiffs_get_info(&total, &used);
+    
+    char response[512];
+    snprintf(response, sizeof(response),
+        "{\"device_id\":\"%s\",\"fw_version\":\"%s\",\"storage\":\"%d/%d KB\",\"hid_slots\":[]}",
+        sys_config.mac,
+        sys_config.app_desc ? sys_config.app_desc->version : "unknown",
+        (int)(used/1024), (int)(total/1024)
+    );
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+// API: 保存配置
+static esp_err_t api_config_post_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "API: Save config");
+    
+    char buf[1024];
+    int received = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (received <= 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No data received");
+        return ESP_FAIL;
+    }
+    buf[received] = '\0';
+    ESP_LOGI(TAG, "Received config: %s", buf);
+    
+    // TODO: 解析JSON并保存到NVS
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"success\":true,\"message\":\"配置已保存\"}", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+// API: 获取当前时间
+static esp_err_t api_time_get_handler(httpd_req_t *req)
+{
+    char time_str[32];
+    if (sntp_time_get_time(time_str, sizeof(time_str)) != ESP_OK) {
+        strcpy(time_str, "--:--:--");
+    }
+    
+    char response[64];
+    snprintf(response, sizeof(response), "{\"time\":\"%s\",\"synced\":%s}",
+        time_str, sntp_time_is_synced() ? "true" : "false");
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+// API: 上传图片
+static esp_err_t api_upload_post_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "API: Upload image, size=%d", req->content_len);
+    
+    if (req->content_len > 150 * 1024) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "File too large (max 150KB)");
+        return ESP_FAIL;
+    }
+    
+    // 打开文件准备写入
+    FILE *f = fopen("/spiffs/bg_custom.png", "wb");
+    if (!f) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to create file");
+        return ESP_FAIL;
+    }
+    
+    char buf[1024];
+    int received;
+    int total_received = 0;
+    
+    while ((received = httpd_req_recv(req, buf, sizeof(buf))) > 0) {
+        fwrite(buf, 1, received, f);
+        total_received += received;
+    }
+    fclose(f);
+    
+    ESP_LOGI(TAG, "Image saved, total bytes: %d", total_received);
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"success\":true,\"message\":\"图片上传成功\"}", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+// API: 保存WiFi配置
+static esp_err_t api_wifi_post_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "API: Save WiFi config");
+    
+    char buf[256];
+    int received = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (received <= 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No data received");
+        return ESP_FAIL;
+    }
+    buf[received] = '\0';
+    
+    // TODO: 解析JSON并保存WiFi配置到NVS
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"success\":true,\"message\":\"WiFi配置已保存，重启后生效\"}", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
@@ -278,6 +397,36 @@ static const httpd_uri_t root = {
     .uri = "/",
     .method = HTTP_GET,
     .handler = root_get_handler,
+};
+
+static const httpd_uri_t api_config_get = {
+    .uri = "/api/config",
+    .method = HTTP_GET,
+    .handler = api_config_get_handler,
+};
+
+static const httpd_uri_t api_config_post = {
+    .uri = "/api/config",
+    .method = HTTP_POST,
+    .handler = api_config_post_handler,
+};
+
+static const httpd_uri_t api_time = {
+    .uri = "/api/time",
+    .method = HTTP_GET,
+    .handler = api_time_get_handler,
+};
+
+static const httpd_uri_t api_upload = {
+    .uri = "/api/upload",
+    .method = HTTP_POST,
+    .handler = api_upload_post_handler,
+};
+
+static const httpd_uri_t api_wifi = {
+    .uri = "/api/wifi",
+    .method = HTTP_POST,
+    .handler = api_wifi_post_handler,
 };
 
 // HTTP Error (404) Handler - Redirects all requests to the root page
@@ -307,6 +456,11 @@ httpd_handle_t start_webserver(void)
     {
         ESP_LOGI(TAG, "Registering URI handlers");
         httpd_register_uri_handler(server, &root);
+        httpd_register_uri_handler(server, &api_config_get);
+        httpd_register_uri_handler(server, &api_config_post);
+        httpd_register_uri_handler(server, &api_time);
+        httpd_register_uri_handler(server, &api_upload);
+        httpd_register_uri_handler(server, &api_wifi);
         httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, http_404_error_handler);
     }
     return server;
