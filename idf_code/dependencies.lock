@@ -2,13 +2,13 @@ dependencies:
   espressif/arduino-foc:
     dependencies: []
     source:
-      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__arduino-foc
+      path: C:\Users\LTG\Desktop\super-dial-motor-knob-screen\idf_code\components\espressif__arduino-foc
       type: local
     version: 2.3.0~3
   espressif/button:
     dependencies: []
     source:
-      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__button
+      path: C:\Users\LTG\Desktop\super-dial-motor-knob-screen\idf_code\components\espressif__button
       type: local
     version: 3.2.0
   espressif/cmake_utilities:
@@ -24,19 +24,19 @@ dependencies:
   espressif/esp_lcd_gc9a01:
     dependencies: []
     source:
-      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__esp_lcd_gc9a01
+      path: C:\Users\LTG\Desktop\super-dial-motor-knob-screen\idf_code\components\espressif__esp_lcd_gc9a01
       type: local
     version: 2.0.0
   espressif/esp_lvgl_port:
     dependencies: []
     source:
-      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__esp_lvgl_port
+      path: C:\Users\LTG\Desktop\super-dial-motor-knob-screen\idf_code\components\espressif__esp_lvgl_port
       type: local
     version: 1.4.0
   espressif/esp_simplefoc:
     dependencies: []
     source:
-      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__esp_simplefoc
+      path: C:\Users\LTG\Desktop\super-dial-motor-knob-screen\idf_code\components\espressif__esp_simplefoc
       type: local
     version: 0.1.1
   espressif/iqmath:
@@ -52,13 +52,13 @@ dependencies:
   espressif/tinyusb:
     dependencies: []
     source:
-      path: D:\github_code\super-dial-motor-knob-screen\idf_code\components\espressif__tinyusb
+      path: C:\Users\LTG\Desktop\super-dial-motor-knob-screen\idf_code\components\espressif__tinyusb
       type: local
     version: 0.15.0~5
   idf:
     source:
       type: idf
-    version: 5.5.2
+    version: 5.5.1
   lvgl/lvgl:
     component_hash: d7c1ac037ae6e85d94897f807d6e7ba0946a83e720074fc95a4f6241da9f9f53
     dependencies: []
