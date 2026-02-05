@@ -52,3 +52,6 @@ bin/dl_temp/
 bin/logs/
 bin/bin_tmp/
 **/*.log
+
+# Backup/Old files
+*.old
