@@ -78,6 +78,7 @@ extern lv_obj_t * ui_Screen1; //main screen
 extern lv_obj_t * ui_Screen2; //system hid screen
 extern lv_obj_t * ui_Screen3; //Customize HID
 extern lv_obj_t * ui_Screen_Setting;
+extern lv_obj_t * ui_Screen_Clock; // Clock screen
 extern lv_indev_t* encoder_indev;
 // SCREEN: Init and event
 void ui_Screen1_dial_event(uint8_t state);
@@ -88,6 +89,8 @@ void ui_Screen3_screen_init(void);
 void ui_Screen3_Custom_hid_event(uint8_t state);
 void ui_Screen_Setting_screen_init(void);
 void ui_Screen_Setting_event(uint8_t state);
+void ui_Screen_Clock_screen_init(void);
+void ui_Screen_Clock_event(uint8_t state);
 void set_screen2_index();
 void set_screen3_index();
 

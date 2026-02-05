@@ -232,6 +232,12 @@ static void Create(lv_obj_t* root)
 
         "Custom HID"
     );
+     Item_Create(root,
+        "Clock",
+        &ui_img_dial_png,
+
+        "Digital Clock"
+    );
 
 	arc_bat = lv_arc_create(ui_Screen1);
     lv_obj_set_width(arc_bat, 240);
@@ -286,6 +292,10 @@ void ui_Screen1_dial_event(uint8_t state)
                     break;
                 case 3://Customize HID Interface
                     _ui_screen_change(&ui_Screen3, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, &ui_Screen3_screen_init);
+                    break;
+                case 4://Clock
+                    _ui_screen_change(&ui_Screen_Clock, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, &ui_Screen_Clock_screen_init);
+                    break;
                 default:
                     break;
             }
