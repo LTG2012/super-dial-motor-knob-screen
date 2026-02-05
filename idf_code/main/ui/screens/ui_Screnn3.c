@@ -59,6 +59,7 @@ static void ui_icon_info_init()
         case 0: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_KEYBOARD; break;
         case 1: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_MOUSE; break;
         case 2: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_DIAL; break; // Surface Dial
+        case 3: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_MEDIA; break; // Multimedia
         default: ui_icon_hid[id].hid_id = HID_ITF_PROTOCOL_KEYBOARD; break;
     }
     

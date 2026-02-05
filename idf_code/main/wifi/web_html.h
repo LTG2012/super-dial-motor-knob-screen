@@ -43,6 +43,36 @@ static const char WEB_CONFIG_HTML[] = R"rawliteral(
             margin-bottom: 16px;
             color: #00d4ff;
         }
+        .bg-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .bg-slot {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .bg-slot.active {
+            border-color: #00d4ff;
+            background: rgba(0,212,255,0.1);
+        }
+        .bg-slot:hover {
+            transform: translateY(-2px);
+        }
+        .bg-slot input { display: none; }
+        .bg-slot-label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9em; }
+        .bg-btn {
+            font-size: 0.8em;
+            padding: 5px 10px;
+            margin-top: 5px;
+            width: 100%;
+        }
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -186,13 +216,20 @@ static const char WEB_CONFIG_HTML[] = R"rawliteral(
         </div>
 
         <div class="card">
-            <h2>🖼️ 背景图片</h2>
-            <div class="upload-area" onclick="document.getElementById('imageInput').click()">
-                <input type="file" id="imageInput" accept="image/png" onchange="uploadImage(this)">
-                <p>📤 点击上传图片</p>
-                <p style="font-size:0.8em;color:#aaa;margin-top:8px;">推荐: 240x240 PNG格式</p>
+            <h2>🚀 固件升级</h2>
+            <div class="upload-area" onclick="document.getElementById('fwInput').click()">
+                <input type="file" id="fwInput" accept=".bin" onchange="uploadFirmware(this)">
+                <p>📤 点击上传固件 (.bin)</p>
             </div>
-            <div class="status" id="uploadStatus"></div>
+            <div class="status" id="fwStatus"></div>
+        </div>
+
+        <div class="card">
+            <h2>🖼️ 壁纸管理</h2>
+            <p style="color:#aaa;margin-bottom:15px;font-size:0.9em">点击槽位选择当前壁纸，点击上传按钮更新壁纸 (240x240 PNG)</p>
+            <div class="bg-grid" id="bgGrid"></div>
+            <button class="btn btn-primary" onclick="saveBgConfig()">💾 保存选中壁纸设置</button>
+            <div class="status" id="bgStatus"></div>
         </div>
 
         <div class="card">
@@ -211,8 +248,34 @@ static const char WEB_CONFIG_HTML[] = R"rawliteral(
     </div>
 
     <script>
-        const HID_TYPES = ['键盘', '鼠标', 'Surface Dial'];
+        const HID_TYPES = ['键盘', '鼠标', 'Surface Dial', '多媒体控制'];
         const MAX_SLOTS = 8;
+        const CMD_SLOTS = 8;
+        let currentBgIndex = 0;
+
+        function createBgSlot(index) {
+            const isActive = index === currentBgIndex;
+            return `
+                <div class="bg-slot ${isActive ? 'active' : ''}" onclick="selectBg(${index})" id="bgSlot${index}">
+                    <span class="bg-slot-label">壁纸 ${index + 1}</span>
+                    <button class="btn btn-secondary bg-btn" onclick="event.stopPropagation();document.getElementById('bgInput${index}').click()">📤 上传</button>
+                    <input type="file" id="bgInput${index}" accept="image/png" onchange="uploadBg(${index}, this)">
+                </div>
+            `;
+        }
+        
+        function renderBgSlots() {
+            let html = '';
+            for(let i=0; i<8; i++) {
+                html += createBgSlot(i);
+            }
+            document.getElementById('bgGrid').innerHTML = html;
+        }
+        
+        function selectBg(index) {
+            currentBgIndex = index;
+            renderBgSlots(); // 重绘最简单
+        }
 
         function createHidSlot(index, data = {}) {
             return `
@@ -257,6 +320,11 @@ static const char WEB_CONFIG_HTML[] = R"rawliteral(
                     document.getElementById('fwVersion').textContent = data.fw_version || 'N/A';
                     document.getElementById('storage').textContent = data.storage || 'N/A';
                     
+                    if(data.bg_index !== undefined) {
+                        currentBgIndex = data.bg_index;
+                        renderBgSlots();
+                    }
+                    
                     let slotsHtml = '';
                     for (let i = 0; i < MAX_SLOTS; i++) {
                         slotsHtml += createHidSlot(i, data.hid_slots?.[i] || {});
@@ -289,66 +357,84 @@ static const char WEB_CONFIG_HTML[] = R"rawliteral(
             .catch(e => showStatus('hidStatus', false, '保存失败: ' + e));
         }
 
-        function uploadImage(input) {
+        function saveBgConfig() {
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({bg_index: currentBgIndex})
+            })
+            .then(r => r.json())
+            .then(data => showStatus('bgStatus', data.success, data.message))
+            .catch(e => showStatus('bgStatus', false, '保存失败: ' + e));
+        }
+
+        function uploadBg(index, input) {
             if (!input.files[0]) return;
             const file = input.files[0];
             const reader = new FileReader();
             
-            showStatus('uploadStatus', true, '正在转换格式...');
+            showStatus('bgStatus', true, `正在处理槽位 ${index+1} 图片...`);
             
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    // 创建画布缩放图片
                     const canvas = document.createElement('canvas');
                     canvas.width = 240;
                     canvas.height = 240;
                     const ctx = canvas.getContext('2d');
-                    
-                    // 保持比例填充或拉伸？这里选择拉伸填满，或者可以做裁剪
-                    // 简单起见，拉伸填满
                     ctx.drawImage(img, 0, 0, 240, 240);
                     
                     const imgData = ctx.getImageData(0, 0, 240, 240);
-                    const pixels = imgData.data; // RGBA
-                    const buffer = new Uint8Array(240 * 240 * 2); // RGB565 buffer
+                    const pixels = imgData.data;
+                    const buffer = new Uint8Array(240 * 240 * 2);
                     
                     let dataIndex = 0;
                     for (let i = 0; i < pixels.length; i += 4) {
                         const r = pixels[i];
                         const g = pixels[i + 1];
                         const b = pixels[i + 2];
-                        
-                        // RGB565 conversion: R5 G6 B5
                         const rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-                        
-                        // Swap bytes for little endian (ESP32 LVGL default often implies converting to LE for 16bit interface)
-                        // But LVGL internal formats usually match the display controller or simple LE.
-                        // Assuming standard little endian storage: low byte first
                         buffer[dataIndex++] = rgb565 & 0xFF;
                         buffer[dataIndex++] = (rgb565 >> 8) & 0xFF;
-                        
-                        // 如果需要 Big Endian，交换这两行
                     }
                     
-                    // 上传转换后的buffer
                     const blob = new Blob([buffer], { type: 'application/octet-stream' });
                     
                     fetch('/api/upload', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/octet-stream',
-                            'X-File-Name': 'bg_custom.bin'
+                            'X-File-Name': `bg_${index}.bin`
                         },
                         body: blob
                     })
                     .then(r => r.json())
-                    .then(data => showStatus('uploadStatus', data.success, data.message))
-                    .catch(e => showStatus('uploadStatus', false, '上传失败: ' + e));
+                    .then(data => showStatus('bgStatus', data.success, data.message))
+                    .catch(e => showStatus('bgStatus', false, '上传失败: ' + e));
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
+        }
+
+        function uploadFirmware(input) {
+            if (!input.files[0]) return;
+            const file = input.files[0];
+            showStatus('fwStatus', true, '正在上传固件 (请勿断电)...');
+            
+            fetch('/api/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/octet-stream'},
+                body: file
+            })
+            .then(r => r.json())
+            .then(data => {
+                showStatus('fwStatus', data.success, data.message);
+                if(data.success) {
+                    setTimeout(() => { location.reload(); }, 5000);
+                }
+            })
+            .catch(e => showStatus('fwStatus', false, '升级失败: ' + e));
         }
 
         function saveWifiConfig() {

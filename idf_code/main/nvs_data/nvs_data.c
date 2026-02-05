@@ -27,6 +27,7 @@ void sys_data_init()
     sys_config.hid_sys_index = nvs_get_u8_data(NVS_SYS_HID_INDEX);
     sys_config.hid_csm_index = nvs_get_u8_data(NVS_CSM_HID_INDEX);
     sys_config.foc_angle = nvs_get_float_data(NVS_FOC_ELECTRIC_ANGLE);
+    sys_config.bg_index = nvs_get_u8_data(NVS_BG_INDEX);
     
     // 读取自定义HID配置，如果不存在或大小不匹配则清零
     if (nvs_get_blob_data(NVS_CUSTOM_HID_DATA, &sys_config.custom_hid, sizeof(CUSTOM_HID_CONFIG)) != sizeof(CUSTOM_HID_CONFIG)) {
@@ -45,6 +46,7 @@ static void nvs_default_data_set()
     nvs_set_u8_data(SET_NVS_FIRST_SCREEN,0);
     nvs_set_u8_data(NVS_SYS_HID_INDEX,0);
     nvs_set_u8_data(NVS_CSM_HID_INDEX,0);
+    nvs_set_u8_data(NVS_BG_INDEX,0);
     nvs_set_float_data(NVS_FOC_ELECTRIC_ANGLE,0);
     
     // 设置默认自定义HID配置 (全空)

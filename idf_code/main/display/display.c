@@ -169,9 +169,19 @@ void display_init(void)
 
 static void load_custom_bg(void)
 {
-    FILE *f = fopen("/spiffs/bg_custom.bin", "rb");
+    char filename[32];
+    snprintf(filename, sizeof(filename), "/spiffs/bg_%d.bin", sys_config.bg_index);
+    
+    FILE *f = fopen(filename, "rb");
     if (!f) {
-        ESP_LOGI(TAG, "No custom background found");
+        // Fallback to old name if index is 0 and new name not found
+        if (sys_config.bg_index == 0) {
+            f = fopen("/spiffs/bg_custom.bin", "rb");
+        }
+    }
+    
+    if (!f) {
+        ESP_LOGI(TAG, "No custom background found for index %d", sys_config.bg_index);
         return;
     }
     

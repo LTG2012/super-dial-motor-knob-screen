@@ -22,6 +22,7 @@ extern "C" {
 #define NVS_CSM_HID_INDEX "csm_hid_index"   //custom hid index
 #define NVS_FOC_ELECTRIC_ANGLE "foc_angle"
 #define NVS_CUSTOM_HID_DATA "csm_hid_data"
+#define NVS_BG_INDEX "bg_index"
 
 #define CUSTOM_HID_SLOT_NUM 8
 typedef struct {
@@ -48,6 +49,7 @@ typedef struct
     uint8_t hid_sys_index;
     uint8_t hid_csm_index;
     char mac[6];
+    uint8_t bg_index;
     float foc_angle;
     const esp_app_desc_t *app_desc;
     CUSTOM_HID_CONFIG custom_hid;
